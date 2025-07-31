@@ -1,0 +1,15 @@
+streamlit
+torch>=1.8 # Check compatibility with your model/CUDA
+numpy
+matplotlib
+scipy # Often needed by scientific/ML libraries
+einops # Seems to be used by SSSD_ECG/S4Model
+pandas # For placeholder tabular data
+
+# RAG Dependencies
+langchain
+langchain-community
+langchain-huggingface
+sentence-transformers
+faiss-cpu
+ollama

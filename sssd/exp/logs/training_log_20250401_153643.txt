@@ -1,0 +1,7 @@
+[2025-04-01 15:36:43] Running in test mode - optimizing for speed
+[2025-04-01 15:36:43] Test mode configurations:
+[2025-04-01 15:36:43] - Iterations: 1000
+[2025-04-01 15:36:43] - Batch size: 4
+[2025-04-01 15:36:43] - Subset size: 500
+[2025-04-01 15:36:43] - Diffusion steps: 50
+[2025-04-01 15:36:43] - Model channels: 64

@@ -1,0 +1,83 @@
+[2025-04-01 15:30:15] Output directory: exp/ch256_T200_betaT0.02
+[2025-04-01 15:30:15] Starting training with configuration:
+{
+  "output_directory": "exp/",
+  "ckpt_iter": -1,
+  "n_iters": 1000,
+  "iters_per_ckpt": 200,
+  "iters_per_logging": 20,
+  "learning_rate": 0.0002,
+  "batch_size": 4,
+  "subset_size": null
+}
+[2025-04-01 15:30:22] Model architecture:
+SSSD_ECG(
+  (init_conv): Sequential(
+    (0): Conv(
+      (conv): Conv1d(8, 256, kernel_size=(1,), stride=(1,))
+    )
+    (1): ReLU()
+  )
+  (label_proj): Linear(in_features=5, out_features=128, bias=True)
+  (residual_layer): Residual_group(
+    (fc_t1): Linear(in_features=128, out_features=512, bias=True)
+    (fc_t2): Linear(in_features=512, out_features=512, bias=True)
+    (residual_blocks): ModuleList(
+      (0-35): 36 x Residual_block(
+        (fc_t): Linear(in_features=512, out_features=256, bias=True)
+        (S41): S4Layer(
+          (s4_layer): S4(
+            (kernel): HippoSSKernel(
+              (kernel): SSKernelNPLR()
+            )
+            (activation): GELU(approximate='none')
+            (dropout): Identity()
+            (output_linear): TransposedLinear()
+          )
+          (norm_layer): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+          (dropout): Identity()
+        )
+        (conv_layer): Conv(
+          (conv): Conv1d(256, 512, kernel_size=(3,), stride=(1,), padding=(1,))
+        )
+        (S42): S4Layer(
+          (s4_layer): S4(
+            (kernel): HippoSSKernel(
+              (kernel): SSKernelNPLR()
+            )
+            (activation): GELU(approximate='none')
+            (dropout): Identity()
+            (output_linear): TransposedLinear()
+          )
+          (norm_layer): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+          (dropout): Identity()
+        )
+        (res_conv): Conv1d(256, 256, kernel_size=(1,), stride=(1,))
+        (skip_conv): Conv1d(256, 256, kernel_size=(1,), stride=(1,))
+        (fc_label): Linear(in_features=128, out_features=512, bias=True)
+      )
+    )
+  )
+  (final_conv): Sequential(
+    (0): Conv(
+      (conv): Conv1d(256, 256, kernel_size=(1,), stride=(1,))
+    )
+    (1): ReLU()
+    (2): ZeroConv1d(
+      (conv): Conv1d(256, 8, kernel_size=(1,), stride=(1,))
+    )
+  )
+)
+[2025-04-01 15:30:22] Optimizer: Adam with learning rate 0.0002
+[2025-04-01 15:30:22] No valid checkpoint model found, starting training from initialization.
+[2025-04-01 15:30:22] Dataset size: 19601 samples
+[2025-04-01 15:30:22] Number of batches: 4900
+[2025-04-01 15:30:45] Progress: 0/1000 iterations (0.0%) Loss: 1.078504 Speed: 0.00 it/s
+[2025-04-01 15:30:45] 
+Detailed Log at Iteration 0:
+[2025-04-01 15:30:45] Loss: 1.078504
+[2025-04-01 15:30:45] Training Speed: 0.00 iterations/second
+[2025-04-01 15:30:45] Elapsed Time: 0:00:22.280714
+[2025-04-01 15:30:45] Estimated Time Remaining: Calculating...
+[2025-04-01 15:30:45] New best loss: 1.078504
+[2025-04-01 15:34:02] Progress: 10/1000 iterations (1.0%) Loss: 1.009372 Speed: 0.05 it/s

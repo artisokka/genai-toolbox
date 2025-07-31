@@ -1,0 +1,724 @@
+[2025-04-01 15:37:10] Running in test mode - optimizing for speed
+[2025-04-01 15:37:10] Test mode configurations:
+[2025-04-01 15:37:10] - Iterations: 1000
+[2025-04-01 15:37:10] - Batch size: 4
+[2025-04-01 15:37:10] - Subset size: 500
+[2025-04-01 15:37:10] - Diffusion steps: 50
+[2025-04-01 15:37:10] - Model channels: 64
+[2025-04-01 15:37:12] Output directory: exp/ch64_T50_betaT0.02
+[2025-04-01 15:37:12] Starting training with configuration:
+{
+  "output_directory": "exp/",
+  "ckpt_iter": -1,
+  "n_iters": 1000,
+  "iters_per_ckpt": 200,
+  "iters_per_logging": 20,
+  "learning_rate": 0.0002,
+  "batch_size": 4,
+  "subset_size": 500,
+  "test_mode": true
+}
+[2025-04-01 15:37:15] Model architecture:
+SSSD_ECG(
+  (init_conv): Sequential(
+    (0): Conv(
+      (conv): Conv1d(8, 64, kernel_size=(1,), stride=(1,))
+    )
+    (1): ReLU()
+  )
+  (label_proj): Linear(in_features=5, out_features=128, bias=True)
+  (residual_layer): Residual_group(
+    (fc_t1): Linear(in_features=128, out_features=512, bias=True)
+    (fc_t2): Linear(in_features=512, out_features=512, bias=True)
+    (residual_blocks): ModuleList(
+      (0-35): 36 x Residual_block(
+        (fc_t): Linear(in_features=512, out_features=64, bias=True)
+        (S41): S4Layer(
+          (s4_layer): S4(
+            (kernel): HippoSSKernel(
+              (kernel): SSKernelNPLR()
+            )
+            (activation): GELU(approximate='none')
+            (dropout): Identity()
+            (output_linear): TransposedLinear()
+          )
+          (norm_layer): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+          (dropout): Identity()
+        )
+        (conv_layer): Conv(
+          (conv): Conv1d(64, 128, kernel_size=(3,), stride=(1,), padding=(1,))
+        )
+        (S42): S4Layer(
+          (s4_layer): S4(
+            (kernel): HippoSSKernel(
+              (kernel): SSKernelNPLR()
+            )
+            (activation): GELU(approximate='none')
+            (dropout): Identity()
+            (output_linear): TransposedLinear()
+          )
+          (norm_layer): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+          (dropout): Identity()
+        )
+        (res_conv): Conv1d(64, 64, kernel_size=(1,), stride=(1,))
+        (skip_conv): Conv1d(64, 64, kernel_size=(1,), stride=(1,))
+        (fc_label): Linear(in_features=128, out_features=128, bias=True)
+      )
+    )
+  )
+  (final_conv): Sequential(
+    (0): Conv(
+      (conv): Conv1d(64, 64, kernel_size=(1,), stride=(1,))
+    )
+    (1): ReLU()
+    (2): ZeroConv1d(
+      (conv): Conv1d(64, 8, kernel_size=(1,), stride=(1,))
+    )
+  )
+)
+[2025-04-01 15:37:15] Optimizer: Adam with learning rate 0.0002
+[2025-04-01 15:37:15] No valid checkpoint model found, starting training from initialization.
+[2025-04-01 15:37:15] Using subset of 500 samples for training
+[2025-04-01 15:37:15] Dataset size: 500 samples
+[2025-04-01 15:37:15] Number of batches: 125
+[2025-04-01 15:37:17] Progress: 0/1000 iterations (0.0%) Loss: 1.065762 Speed: 0.00 it/s Batch Time: 1.302s GPU Mem: 119.8MB 
+[2025-04-01 15:37:17] 
+Detailed Log at Iteration 0:
+[2025-04-01 15:37:17] Loss: 1.065762
+[2025-04-01 15:37:17] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:37:17] GPU Memory Cached: 1840.0 MB
+[2025-04-01 15:37:17] GPU Utilization: 83%
+[2025-04-01 15:37:17] Training Speed: 0.00 iterations/second
+[2025-04-01 15:37:17] Elapsed Time: 0:00:01.301749
+[2025-04-01 15:37:17] Estimated Time Remaining: Calculating...
+[2025-04-01 15:37:17] Average Batch Time: 1.302 seconds
+[2025-04-01 15:37:17] New best loss: 1.065762
+[2025-04-01 15:37:25] Progress: 10/1000 iterations (1.0%) Loss: 1.191001 Speed: 1.04 it/s Batch Time: 0.829s GPU Mem: 119.8MB 
+[2025-04-01 15:37:33] Progress: 20/1000 iterations (2.0%) Loss: 1.029893 Speed: 1.13 it/s Batch Time: 0.828s GPU Mem: 119.8MB 
+[2025-04-01 15:37:33] 
+Detailed Log at Iteration 20:
+[2025-04-01 15:37:33] Loss: 1.029893
+[2025-04-01 15:37:33] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:37:33] GPU Memory Cached: 1900.0 MB
+[2025-04-01 15:37:33] GPU Utilization: 93%
+[2025-04-01 15:37:33] Training Speed: 1.13 iterations/second
+[2025-04-01 15:37:33] Elapsed Time: 0:00:17.690165
+[2025-04-01 15:37:33] Estimated Time Remaining: 866.8 seconds
+[2025-04-01 15:37:33] Average Batch Time: 0.828 seconds
+[2025-04-01 15:37:33] New best loss: 1.029893
+[2025-04-01 15:37:41] Progress: 30/1000 iterations (3.0%) Loss: 0.909933 Speed: 1.17 it/s Batch Time: 0.795s GPU Mem: 119.8MB 
+[2025-04-01 15:37:49] Progress: 40/1000 iterations (4.0%) Loss: 0.944583 Speed: 1.18 it/s Batch Time: 0.817s GPU Mem: 119.8MB 
+[2025-04-01 15:37:49] 
+Detailed Log at Iteration 40:
+[2025-04-01 15:37:49] Loss: 0.944583
+[2025-04-01 15:37:49] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:37:49] GPU Memory Cached: 1900.0 MB
+[2025-04-01 15:37:49] GPU Utilization: 90%
+[2025-04-01 15:37:49] Training Speed: 1.18 iterations/second
+[2025-04-01 15:37:49] Elapsed Time: 0:00:33.807508
+[2025-04-01 15:37:49] Estimated Time Remaining: 811.4 seconds
+[2025-04-01 15:37:49] Average Batch Time: 0.817 seconds
+[2025-04-01 15:37:49] New best loss: 0.944583
+[2025-04-01 15:37:57] Progress: 50/1000 iterations (5.0%) Loss: 1.006769 Speed: 1.19 it/s Batch Time: 0.796s GPU Mem: 119.8MB 
+[2025-04-01 15:38:05] Progress: 60/1000 iterations (6.0%) Loss: 0.943990 Speed: 1.20 it/s Batch Time: 0.810s GPU Mem: 119.8MB 
+[2025-04-01 15:38:05] 
+Detailed Log at Iteration 60:
+[2025-04-01 15:38:05] Loss: 0.943990
+[2025-04-01 15:38:05] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:38:05] GPU Memory Cached: 1900.0 MB
+[2025-04-01 15:38:05] GPU Utilization: 92%
+[2025-04-01 15:38:05] Training Speed: 1.20 iterations/second
+[2025-04-01 15:38:05] Elapsed Time: 0:00:49.843376
+[2025-04-01 15:38:05] Estimated Time Remaining: 780.9 seconds
+[2025-04-01 15:38:05] Average Batch Time: 0.810 seconds
+[2025-04-01 15:38:05] New best loss: 0.943990
+[2025-04-01 15:38:13] Progress: 70/1000 iterations (7.0%) Loss: 0.959714 Speed: 1.21 it/s Batch Time: 0.793s GPU Mem: 119.8MB 
+[2025-04-01 15:38:21] Progress: 80/1000 iterations (8.0%) Loss: 0.894801 Speed: 1.22 it/s Batch Time: 0.790s GPU Mem: 119.8MB 
+[2025-04-01 15:38:21] 
+Detailed Log at Iteration 80:
+[2025-04-01 15:38:21] Loss: 0.894801
+[2025-04-01 15:38:21] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:38:21] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:38:21] GPU Utilization: 90%
+[2025-04-01 15:38:21] Training Speed: 1.21 iterations/second
+[2025-04-01 15:38:21] Elapsed Time: 0:01:05.843937
+[2025-04-01 15:38:21] Estimated Time Remaining: 757.2 seconds
+[2025-04-01 15:38:21] Average Batch Time: 0.790 seconds
+[2025-04-01 15:38:21] New best loss: 0.894801
+[2025-04-01 15:38:29] Progress: 90/1000 iterations (9.0%) Loss: 0.829368 Speed: 1.22 it/s Batch Time: 0.797s GPU Mem: 119.8MB 
+[2025-04-01 15:38:37] Progress: 100/1000 iterations (10.0%) Loss: 0.932071 Speed: 1.22 it/s Batch Time: 0.805s GPU Mem: 119.8MB 
+[2025-04-01 15:38:37] 
+Detailed Log at Iteration 100:
+[2025-04-01 15:38:37] Loss: 0.932071
+[2025-04-01 15:38:37] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:38:37] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:38:37] GPU Utilization: 88%
+[2025-04-01 15:38:37] Training Speed: 1.22 iterations/second
+[2025-04-01 15:38:37] Elapsed Time: 0:01:21.798944
+[2025-04-01 15:38:37] Estimated Time Remaining: 736.2 seconds
+[2025-04-01 15:38:37] Average Batch Time: 0.805 seconds
+[2025-04-01 15:38:45] Progress: 110/1000 iterations (11.0%) Loss: 0.890423 Speed: 1.22 it/s Batch Time: 0.814s GPU Mem: 119.8MB 
+[2025-04-01 15:38:54] Progress: 120/1000 iterations (12.0%) Loss: 0.968637 Speed: 1.22 it/s Batch Time: 0.809s GPU Mem: 119.8MB 
+[2025-04-01 15:38:54] 
+Detailed Log at Iteration 120:
+[2025-04-01 15:38:54] Loss: 0.968637
+[2025-04-01 15:38:54] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:38:54] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:38:54] GPU Utilization: 90%
+[2025-04-01 15:38:54] Training Speed: 1.22 iterations/second
+[2025-04-01 15:38:54] Elapsed Time: 0:01:38.086995
+[2025-04-01 15:38:54] Estimated Time Remaining: 719.3 seconds
+[2025-04-01 15:38:54] Average Batch Time: 0.809 seconds
+[2025-04-01 15:39:01] Progress: 130/1000 iterations (13.0%) Loss: 0.949904 Speed: 1.23 it/s Batch Time: 0.800s GPU Mem: 119.8MB 
+[2025-04-01 15:39:09] Progress: 140/1000 iterations (14.0%) Loss: 0.763664 Speed: 1.23 it/s Batch Time: 0.819s GPU Mem: 119.8MB 
+[2025-04-01 15:39:09] 
+Detailed Log at Iteration 140:
+[2025-04-01 15:39:09] Loss: 0.763664
+[2025-04-01 15:39:09] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:39:09] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:39:09] GPU Utilization: 87%
+[2025-04-01 15:39:09] Training Speed: 1.23 iterations/second
+[2025-04-01 15:39:09] Elapsed Time: 0:01:54.007992
+[2025-04-01 15:39:09] Estimated Time Remaining: 700.3 seconds
+[2025-04-01 15:39:09] Average Batch Time: 0.819 seconds
+[2025-04-01 15:39:09] New best loss: 0.763664
+[2025-04-01 15:39:18] Progress: 150/1000 iterations (15.0%) Loss: 0.882293 Speed: 1.23 it/s Batch Time: 0.818s GPU Mem: 119.8MB 
+[2025-04-01 15:39:26] Progress: 160/1000 iterations (16.0%) Loss: 0.840754 Speed: 1.23 it/s Batch Time: 0.830s GPU Mem: 119.8MB 
+[2025-04-01 15:39:26] 
+Detailed Log at Iteration 160:
+[2025-04-01 15:39:26] Loss: 0.840754
+[2025-04-01 15:39:26] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:39:26] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:39:26] GPU Utilization: 86%
+[2025-04-01 15:39:26] Training Speed: 1.23 iterations/second
+[2025-04-01 15:39:26] Elapsed Time: 0:02:10.311187
+[2025-04-01 15:39:26] Estimated Time Remaining: 684.1 seconds
+[2025-04-01 15:39:26] Average Batch Time: 0.830 seconds
+[2025-04-01 15:39:34] Progress: 170/1000 iterations (17.0%) Loss: 0.844422 Speed: 1.23 it/s Batch Time: 0.797s GPU Mem: 119.8MB 
+[2025-04-01 15:39:42] Progress: 180/1000 iterations (18.0%) Loss: 0.874743 Speed: 1.23 it/s Batch Time: 0.851s GPU Mem: 119.8MB 
+[2025-04-01 15:39:42] 
+Detailed Log at Iteration 180:
+[2025-04-01 15:39:42] Loss: 0.874743
+[2025-04-01 15:39:42] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:39:42] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:39:42] GPU Utilization: 84%
+[2025-04-01 15:39:42] Training Speed: 1.23 iterations/second
+[2025-04-01 15:39:42] Elapsed Time: 0:02:26.500655
+[2025-04-01 15:39:42] Estimated Time Remaining: 667.4 seconds
+[2025-04-01 15:39:42] Average Batch Time: 0.851 seconds
+[2025-04-01 15:39:50] Progress: 190/1000 iterations (19.0%) Loss: 0.795609 Speed: 1.23 it/s Batch Time: 0.816s GPU Mem: 119.8MB 
+[2025-04-01 15:39:58] Progress: 200/1000 iterations (20.0%) Loss: 0.848556 Speed: 1.23 it/s Batch Time: 0.794s GPU Mem: 119.8MB 
+[2025-04-01 15:39:58] 
+Detailed Log at Iteration 200:
+[2025-04-01 15:39:58] Loss: 0.848556
+[2025-04-01 15:39:58] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:39:58] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:39:58] GPU Utilization: 94%
+[2025-04-01 15:39:58] Training Speed: 1.23 iterations/second
+[2025-04-01 15:39:58] Elapsed Time: 0:02:42.531237
+[2025-04-01 15:39:58] Estimated Time Remaining: 650.1 seconds
+[2025-04-01 15:39:58] Average Batch Time: 0.794 seconds
+[2025-04-01 15:39:58] Model checkpoint saved at iteration 200
+[2025-04-01 15:40:06] Progress: 210/1000 iterations (21.0%) Loss: 0.716765 Speed: 1.23 it/s Batch Time: 0.830s GPU Mem: 119.8MB 
+[2025-04-01 15:40:15] Progress: 220/1000 iterations (22.0%) Loss: 0.831491 Speed: 1.23 it/s Batch Time: 0.787s GPU Mem: 119.8MB 
+[2025-04-01 15:40:15] 
+Detailed Log at Iteration 220:
+[2025-04-01 15:40:15] Loss: 0.831491
+[2025-04-01 15:40:15] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:40:15] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:40:15] GPU Utilization: 92%
+[2025-04-01 15:40:15] Training Speed: 1.23 iterations/second
+[2025-04-01 15:40:15] Elapsed Time: 0:02:59.082886
+[2025-04-01 15:40:15] Estimated Time Remaining: 634.9 seconds
+[2025-04-01 15:40:15] Average Batch Time: 0.787 seconds
+[2025-04-01 15:40:23] Progress: 230/1000 iterations (23.0%) Loss: 0.796202 Speed: 1.23 it/s Batch Time: 0.794s GPU Mem: 119.8MB 
+[2025-04-01 15:40:31] Progress: 240/1000 iterations (24.0%) Loss: 0.872538 Speed: 1.23 it/s Batch Time: 0.816s GPU Mem: 119.8MB 
+[2025-04-01 15:40:31] 
+Detailed Log at Iteration 240:
+[2025-04-01 15:40:31] Loss: 0.872538
+[2025-04-01 15:40:31] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:40:31] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:40:31] GPU Utilization: 94%
+[2025-04-01 15:40:31] Training Speed: 1.23 iterations/second
+[2025-04-01 15:40:31] Elapsed Time: 0:03:15.303809
+[2025-04-01 15:40:31] Estimated Time Remaining: 618.5 seconds
+[2025-04-01 15:40:31] Average Batch Time: 0.816 seconds
+[2025-04-01 15:40:39] Progress: 250/1000 iterations (25.0%) Loss: 0.752432 Speed: 1.23 it/s Batch Time: 0.816s GPU Mem: 119.8MB 
+[2025-04-01 15:40:47] Progress: 260/1000 iterations (26.0%) Loss: 0.809712 Speed: 1.23 it/s Batch Time: 0.783s GPU Mem: 119.8MB 
+[2025-04-01 15:40:47] 
+Detailed Log at Iteration 260:
+[2025-04-01 15:40:47] Loss: 0.809712
+[2025-04-01 15:40:47] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:40:47] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:40:47] GPU Utilization: 94%
+[2025-04-01 15:40:47] Training Speed: 1.23 iterations/second
+[2025-04-01 15:40:47] Elapsed Time: 0:03:31.571735
+[2025-04-01 15:40:47] Estimated Time Remaining: 602.2 seconds
+[2025-04-01 15:40:47] Average Batch Time: 0.783 seconds
+[2025-04-01 15:40:55] Progress: 270/1000 iterations (27.0%) Loss: 0.802365 Speed: 1.23 it/s Batch Time: 0.800s GPU Mem: 119.8MB 
+[2025-04-01 15:41:03] Progress: 280/1000 iterations (28.0%) Loss: 0.904425 Speed: 1.23 it/s Batch Time: 0.806s GPU Mem: 119.8MB 
+[2025-04-01 15:41:03] 
+Detailed Log at Iteration 280:
+[2025-04-01 15:41:03] Loss: 0.904425
+[2025-04-01 15:41:03] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:41:03] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:41:03] GPU Utilization: 92%
+[2025-04-01 15:41:03] Training Speed: 1.23 iterations/second
+[2025-04-01 15:41:03] Elapsed Time: 0:03:47.703192
+[2025-04-01 15:41:03] Estimated Time Remaining: 585.5 seconds
+[2025-04-01 15:41:03] Average Batch Time: 0.806 seconds
+[2025-04-01 15:41:11] Progress: 290/1000 iterations (29.0%) Loss: 0.719002 Speed: 1.23 it/s Batch Time: 0.814s GPU Mem: 119.8MB 
+[2025-04-01 15:41:19] Progress: 300/1000 iterations (30.0%) Loss: 0.841170 Speed: 1.23 it/s Batch Time: 0.821s GPU Mem: 119.8MB 
+[2025-04-01 15:41:19] 
+Detailed Log at Iteration 300:
+[2025-04-01 15:41:19] Loss: 0.841170
+[2025-04-01 15:41:19] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:41:19] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:41:19] GPU Utilization: 91%
+[2025-04-01 15:41:19] Training Speed: 1.23 iterations/second
+[2025-04-01 15:41:19] Elapsed Time: 0:04:03.896134
+[2025-04-01 15:41:19] Estimated Time Remaining: 569.1 seconds
+[2025-04-01 15:41:19] Average Batch Time: 0.821 seconds
+[2025-04-01 15:41:27] Progress: 310/1000 iterations (31.0%) Loss: 0.878595 Speed: 1.23 it/s Batch Time: 0.804s GPU Mem: 119.8MB 
+[2025-04-01 15:41:36] Progress: 320/1000 iterations (32.0%) Loss: 0.821029 Speed: 1.23 it/s Batch Time: 0.807s GPU Mem: 119.8MB 
+[2025-04-01 15:41:36] 
+Detailed Log at Iteration 320:
+[2025-04-01 15:41:36] Loss: 0.821029
+[2025-04-01 15:41:36] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:41:36] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:41:36] GPU Utilization: 84%
+[2025-04-01 15:41:36] Training Speed: 1.23 iterations/second
+[2025-04-01 15:41:36] Elapsed Time: 0:04:20.088653
+[2025-04-01 15:41:36] Estimated Time Remaining: 552.7 seconds
+[2025-04-01 15:41:36] Average Batch Time: 0.807 seconds
+[2025-04-01 15:41:44] Progress: 330/1000 iterations (33.0%) Loss: 0.705725 Speed: 1.23 it/s Batch Time: 0.805s GPU Mem: 119.8MB 
+[2025-04-01 15:41:53] Progress: 340/1000 iterations (34.0%) Loss: 0.765016 Speed: 1.23 it/s Batch Time: 0.928s GPU Mem: 119.8MB 
+[2025-04-01 15:41:53] 
+Detailed Log at Iteration 340:
+[2025-04-01 15:41:53] Loss: 0.765016
+[2025-04-01 15:41:53] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:41:53] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:41:53] GPU Utilization: 68%
+[2025-04-01 15:41:53] Training Speed: 1.23 iterations/second
+[2025-04-01 15:41:53] Elapsed Time: 0:04:37.150189
+[2025-04-01 15:41:53] Estimated Time Remaining: 538.0 seconds
+[2025-04-01 15:41:53] Average Batch Time: 0.928 seconds
+[2025-04-01 15:42:01] Progress: 350/1000 iterations (35.0%) Loss: 0.645262 Speed: 1.23 it/s Batch Time: 0.816s GPU Mem: 119.8MB 
+[2025-04-01 15:42:09] Progress: 360/1000 iterations (36.0%) Loss: 0.597780 Speed: 1.23 it/s Batch Time: 0.821s GPU Mem: 119.8MB 
+[2025-04-01 15:42:09] 
+Detailed Log at Iteration 360:
+[2025-04-01 15:42:09] Loss: 0.597780
+[2025-04-01 15:42:09] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:42:09] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:42:09] GPU Utilization: 92%
+[2025-04-01 15:42:09] Training Speed: 1.23 iterations/second
+[2025-04-01 15:42:09] Elapsed Time: 0:04:53.462581
+[2025-04-01 15:42:09] Estimated Time Remaining: 521.7 seconds
+[2025-04-01 15:42:09] Average Batch Time: 0.821 seconds
+[2025-04-01 15:42:09] New best loss: 0.597780
+[2025-04-01 15:42:17] Progress: 370/1000 iterations (37.0%) Loss: 0.645806 Speed: 1.23 it/s Batch Time: 0.844s GPU Mem: 119.8MB 
+[2025-04-01 15:42:25] Progress: 380/1000 iterations (38.0%) Loss: 0.676956 Speed: 1.23 it/s Batch Time: 0.786s GPU Mem: 119.8MB 
+[2025-04-01 15:42:25] 
+Detailed Log at Iteration 380:
+[2025-04-01 15:42:25] Loss: 0.676956
+[2025-04-01 15:42:25] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:42:25] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:42:25] GPU Utilization: 92%
+[2025-04-01 15:42:25] Training Speed: 1.23 iterations/second
+[2025-04-01 15:42:25] Elapsed Time: 0:05:09.833090
+[2025-04-01 15:42:25] Estimated Time Remaining: 505.5 seconds
+[2025-04-01 15:42:25] Average Batch Time: 0.786 seconds
+[2025-04-01 15:42:34] Progress: 390/1000 iterations (39.0%) Loss: 0.604722 Speed: 1.23 it/s Batch Time: 0.887s GPU Mem: 119.8MB 
+[2025-04-01 15:42:42] Progress: 400/1000 iterations (40.0%) Loss: 0.632067 Speed: 1.23 it/s Batch Time: 0.799s GPU Mem: 119.8MB 
+[2025-04-01 15:42:42] 
+Detailed Log at Iteration 400:
+[2025-04-01 15:42:42] Loss: 0.632067
+[2025-04-01 15:42:42] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:42:42] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:42:42] GPU Utilization: 88%
+[2025-04-01 15:42:42] Training Speed: 1.23 iterations/second
+[2025-04-01 15:42:42] Elapsed Time: 0:05:26.286505
+[2025-04-01 15:42:42] Estimated Time Remaining: 489.4 seconds
+[2025-04-01 15:42:42] Average Batch Time: 0.799 seconds
+[2025-04-01 15:42:42] Model checkpoint saved at iteration 400
+[2025-04-01 15:42:50] Progress: 410/1000 iterations (41.0%) Loss: 0.721137 Speed: 1.23 it/s Batch Time: 0.816s GPU Mem: 119.8MB 
+[2025-04-01 15:42:58] Progress: 420/1000 iterations (42.0%) Loss: 0.672696 Speed: 1.23 it/s Batch Time: 0.799s GPU Mem: 119.8MB 
+[2025-04-01 15:42:58] 
+Detailed Log at Iteration 420:
+[2025-04-01 15:42:58] Loss: 0.672696
+[2025-04-01 15:42:58] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:42:58] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:42:58] GPU Utilization: 92%
+[2025-04-01 15:42:58] Training Speed: 1.23 iterations/second
+[2025-04-01 15:42:58] Elapsed Time: 0:05:42.715088
+[2025-04-01 15:42:58] Estimated Time Remaining: 473.3 seconds
+[2025-04-01 15:42:58] Average Batch Time: 0.799 seconds
+[2025-04-01 15:43:06] Progress: 430/1000 iterations (43.0%) Loss: 0.676477 Speed: 1.23 it/s Batch Time: 0.790s GPU Mem: 119.8MB 
+[2025-04-01 15:43:14] Progress: 440/1000 iterations (44.0%) Loss: 0.708533 Speed: 1.23 it/s Batch Time: 0.886s GPU Mem: 119.8MB 
+[2025-04-01 15:43:14] 
+Detailed Log at Iteration 440:
+[2025-04-01 15:43:14] Loss: 0.708533
+[2025-04-01 15:43:14] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:43:14] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:43:14] GPU Utilization: 78%
+[2025-04-01 15:43:14] Training Speed: 1.23 iterations/second
+[2025-04-01 15:43:14] Elapsed Time: 0:05:58.968190
+[2025-04-01 15:43:14] Estimated Time Remaining: 456.9 seconds
+[2025-04-01 15:43:14] Average Batch Time: 0.886 seconds
+[2025-04-01 15:43:24] Progress: 450/1000 iterations (45.0%) Loss: 0.676052 Speed: 1.22 it/s Batch Time: 0.929s GPU Mem: 119.8MB 
+[2025-04-01 15:43:33] Progress: 460/1000 iterations (46.0%) Loss: 0.645388 Speed: 1.22 it/s Batch Time: 0.903s GPU Mem: 119.8MB 
+[2025-04-01 15:43:33] 
+Detailed Log at Iteration 460:
+[2025-04-01 15:43:33] Loss: 0.645388
+[2025-04-01 15:43:33] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:43:33] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:43:33] GPU Utilization: 82%
+[2025-04-01 15:43:33] Training Speed: 1.22 iterations/second
+[2025-04-01 15:43:33] Elapsed Time: 0:06:17.071956
+[2025-04-01 15:43:33] Estimated Time Remaining: 442.6 seconds
+[2025-04-01 15:43:33] Average Batch Time: 0.903 seconds
+[2025-04-01 15:43:42] Progress: 470/1000 iterations (47.0%) Loss: 0.602555 Speed: 1.22 it/s Batch Time: 0.964s GPU Mem: 119.8MB 
+[2025-04-01 15:43:50] Progress: 480/1000 iterations (48.0%) Loss: 0.698898 Speed: 1.22 it/s Batch Time: 0.883s GPU Mem: 119.8MB 
+[2025-04-01 15:43:50] 
+Detailed Log at Iteration 480:
+[2025-04-01 15:43:50] Loss: 0.698898
+[2025-04-01 15:43:50] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:43:50] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:43:50] GPU Utilization: 86%
+[2025-04-01 15:43:50] Training Speed: 1.22 iterations/second
+[2025-04-01 15:43:50] Elapsed Time: 0:06:34.899842
+[2025-04-01 15:43:50] Estimated Time Remaining: 427.8 seconds
+[2025-04-01 15:43:50] Average Batch Time: 0.883 seconds
+[2025-04-01 15:43:59] Progress: 490/1000 iterations (49.0%) Loss: 0.746378 Speed: 1.22 it/s Batch Time: 0.825s GPU Mem: 119.8MB 
+[2025-04-01 15:44:07] Progress: 500/1000 iterations (50.0%) Loss: 0.708915 Speed: 1.22 it/s Batch Time: 0.812s GPU Mem: 119.8MB 
+[2025-04-01 15:44:07] 
+Detailed Log at Iteration 500:
+[2025-04-01 15:44:07] Loss: 0.708915
+[2025-04-01 15:44:07] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:44:07] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:44:07] GPU Utilization: 88%
+[2025-04-01 15:44:07] Training Speed: 1.22 iterations/second
+[2025-04-01 15:44:07] Elapsed Time: 0:06:51.277471
+[2025-04-01 15:44:07] Estimated Time Remaining: 411.3 seconds
+[2025-04-01 15:44:07] Average Batch Time: 0.812 seconds
+[2025-04-01 15:44:15] Progress: 510/1000 iterations (51.0%) Loss: 0.675645 Speed: 1.22 it/s Batch Time: 0.814s GPU Mem: 119.8MB 
+[2025-04-01 15:44:23] Progress: 520/1000 iterations (52.0%) Loss: 0.598044 Speed: 1.22 it/s Batch Time: 0.846s GPU Mem: 119.8MB 
+[2025-04-01 15:44:23] 
+Detailed Log at Iteration 520:
+[2025-04-01 15:44:23] Loss: 0.598044
+[2025-04-01 15:44:23] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:44:23] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:44:23] GPU Utilization: 83%
+[2025-04-01 15:44:23] Training Speed: 1.22 iterations/second
+[2025-04-01 15:44:23] Elapsed Time: 0:07:07.581468
+[2025-04-01 15:44:23] Estimated Time Remaining: 394.7 seconds
+[2025-04-01 15:44:23] Average Batch Time: 0.846 seconds
+[2025-04-01 15:44:31] Progress: 530/1000 iterations (53.0%) Loss: 0.781490 Speed: 1.22 it/s Batch Time: 0.839s GPU Mem: 119.8MB 
+[2025-04-01 15:44:40] Progress: 540/1000 iterations (54.0%) Loss: 0.691684 Speed: 1.22 it/s Batch Time: 0.835s GPU Mem: 119.8MB 
+[2025-04-01 15:44:40] 
+Detailed Log at Iteration 540:
+[2025-04-01 15:44:40] Loss: 0.691684
+[2025-04-01 15:44:40] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:44:40] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:44:40] GPU Utilization: 86%
+[2025-04-01 15:44:40] Training Speed: 1.22 iterations/second
+[2025-04-01 15:44:40] Elapsed Time: 0:07:24.191711
+[2025-04-01 15:44:40] Estimated Time Remaining: 378.4 seconds
+[2025-04-01 15:44:40] Average Batch Time: 0.835 seconds
+[2025-04-01 15:44:48] Progress: 550/1000 iterations (55.0%) Loss: 0.625140 Speed: 1.22 it/s Batch Time: 0.811s GPU Mem: 119.8MB 
+[2025-04-01 15:44:56] Progress: 560/1000 iterations (56.0%) Loss: 0.691995 Speed: 1.22 it/s Batch Time: 0.838s GPU Mem: 119.8MB 
+[2025-04-01 15:44:56] 
+Detailed Log at Iteration 560:
+[2025-04-01 15:44:56] Loss: 0.691995
+[2025-04-01 15:44:56] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:44:56] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:44:56] GPU Utilization: 84%
+[2025-04-01 15:44:56] Training Speed: 1.22 iterations/second
+[2025-04-01 15:44:56] Elapsed Time: 0:07:40.602717
+[2025-04-01 15:44:56] Estimated Time Remaining: 361.9 seconds
+[2025-04-01 15:44:56] Average Batch Time: 0.838 seconds
+[2025-04-01 15:45:04] Progress: 570/1000 iterations (57.0%) Loss: 0.577007 Speed: 1.22 it/s Batch Time: 0.812s GPU Mem: 119.8MB 
+[2025-04-01 15:45:12] Progress: 580/1000 iterations (58.0%) Loss: 0.526625 Speed: 1.22 it/s Batch Time: 0.802s GPU Mem: 119.8MB 
+[2025-04-01 15:45:12] 
+Detailed Log at Iteration 580:
+[2025-04-01 15:45:12] Loss: 0.526625
+[2025-04-01 15:45:12] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:45:12] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:45:12] GPU Utilization: 88%
+[2025-04-01 15:45:12] Training Speed: 1.22 iterations/second
+[2025-04-01 15:45:12] Elapsed Time: 0:07:57.040540
+[2025-04-01 15:45:12] Estimated Time Remaining: 345.4 seconds
+[2025-04-01 15:45:12] Average Batch Time: 0.802 seconds
+[2025-04-01 15:45:12] New best loss: 0.526625
+[2025-04-01 15:45:21] Progress: 590/1000 iterations (59.0%) Loss: 0.544554 Speed: 1.22 it/s Batch Time: 0.854s GPU Mem: 119.8MB 
+[2025-04-01 15:45:29] Progress: 600/1000 iterations (60.0%) Loss: 0.509769 Speed: 1.22 it/s Batch Time: 0.846s GPU Mem: 119.8MB 
+[2025-04-01 15:45:29] 
+Detailed Log at Iteration 600:
+[2025-04-01 15:45:29] Loss: 0.509769
+[2025-04-01 15:45:29] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:45:29] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:45:29] GPU Utilization: 88%
+[2025-04-01 15:45:29] Training Speed: 1.22 iterations/second
+[2025-04-01 15:45:29] Elapsed Time: 0:08:13.752010
+[2025-04-01 15:45:29] Estimated Time Remaining: 329.2 seconds
+[2025-04-01 15:45:29] Average Batch Time: 0.846 seconds
+[2025-04-01 15:45:29] New best loss: 0.509769
+[2025-04-01 15:45:29] Model checkpoint saved at iteration 600
+[2025-04-01 15:45:38] Progress: 610/1000 iterations (61.0%) Loss: 0.556623 Speed: 1.21 it/s Batch Time: 0.825s GPU Mem: 119.8MB 
+[2025-04-01 15:45:46] Progress: 620/1000 iterations (62.0%) Loss: 0.488014 Speed: 1.21 it/s Batch Time: 0.830s GPU Mem: 119.8MB 
+[2025-04-01 15:45:46] 
+Detailed Log at Iteration 620:
+[2025-04-01 15:45:46] Loss: 0.488014
+[2025-04-01 15:45:46] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:45:46] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:45:46] GPU Utilization: 85%
+[2025-04-01 15:45:46] Training Speed: 1.21 iterations/second
+[2025-04-01 15:45:46] Elapsed Time: 0:08:30.357223
+[2025-04-01 15:45:46] Estimated Time Remaining: 312.8 seconds
+[2025-04-01 15:45:46] Average Batch Time: 0.830 seconds
+[2025-04-01 15:45:46] New best loss: 0.488014
+[2025-04-01 15:45:54] Progress: 630/1000 iterations (63.0%) Loss: 0.615925 Speed: 1.22 it/s Batch Time: 0.816s GPU Mem: 119.8MB 
+[2025-04-01 15:46:02] Progress: 640/1000 iterations (64.0%) Loss: 0.585608 Speed: 1.21 it/s Batch Time: 0.825s GPU Mem: 119.8MB 
+[2025-04-01 15:46:02] 
+Detailed Log at Iteration 640:
+[2025-04-01 15:46:02] Loss: 0.585608
+[2025-04-01 15:46:02] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:46:02] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:46:02] GPU Utilization: 83%
+[2025-04-01 15:46:02] Training Speed: 1.21 iterations/second
+[2025-04-01 15:46:02] Elapsed Time: 0:08:46.784194
+[2025-04-01 15:46:02] Estimated Time Remaining: 296.3 seconds
+[2025-04-01 15:46:02] Average Batch Time: 0.825 seconds
+[2025-04-01 15:46:10] Progress: 650/1000 iterations (65.0%) Loss: 0.607400 Speed: 1.21 it/s Batch Time: 0.806s GPU Mem: 119.8MB 
+[2025-04-01 15:46:19] Progress: 660/1000 iterations (66.0%) Loss: 0.431065 Speed: 1.22 it/s Batch Time: 0.804s GPU Mem: 119.8MB 
+[2025-04-01 15:46:19] 
+Detailed Log at Iteration 660:
+[2025-04-01 15:46:19] Loss: 0.431065
+[2025-04-01 15:46:19] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:46:19] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:46:19] GPU Utilization: 85%
+[2025-04-01 15:46:19] Training Speed: 1.22 iterations/second
+[2025-04-01 15:46:19] Elapsed Time: 0:09:03.192056
+[2025-04-01 15:46:19] Estimated Time Remaining: 279.8 seconds
+[2025-04-01 15:46:19] Average Batch Time: 0.804 seconds
+[2025-04-01 15:46:19] New best loss: 0.431065
+[2025-04-01 15:46:27] Progress: 670/1000 iterations (67.0%) Loss: 0.419270 Speed: 1.22 it/s Batch Time: 0.837s GPU Mem: 119.8MB 
+[2025-04-01 15:46:35] Progress: 680/1000 iterations (68.0%) Loss: 0.514460 Speed: 1.22 it/s Batch Time: 0.789s GPU Mem: 119.8MB 
+[2025-04-01 15:46:35] 
+Detailed Log at Iteration 680:
+[2025-04-01 15:46:35] Loss: 0.514460
+[2025-04-01 15:46:35] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:46:35] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:46:35] GPU Utilization: 91%
+[2025-04-01 15:46:35] Training Speed: 1.22 iterations/second
+[2025-04-01 15:46:35] Elapsed Time: 0:09:19.541021
+[2025-04-01 15:46:35] Estimated Time Remaining: 263.3 seconds
+[2025-04-01 15:46:35] Average Batch Time: 0.789 seconds
+[2025-04-01 15:46:43] Progress: 690/1000 iterations (69.0%) Loss: 0.517398 Speed: 1.22 it/s Batch Time: 0.831s GPU Mem: 119.8MB 
+[2025-04-01 15:46:51] Progress: 700/1000 iterations (70.0%) Loss: 0.500168 Speed: 1.22 it/s Batch Time: 0.829s GPU Mem: 119.8MB 
+[2025-04-01 15:46:51] 
+Detailed Log at Iteration 700:
+[2025-04-01 15:46:51] Loss: 0.500168
+[2025-04-01 15:46:51] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:46:51] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:46:51] GPU Utilization: 90%
+[2025-04-01 15:46:51] Training Speed: 1.22 iterations/second
+[2025-04-01 15:46:51] Elapsed Time: 0:09:35.918249
+[2025-04-01 15:46:51] Estimated Time Remaining: 246.8 seconds
+[2025-04-01 15:46:51] Average Batch Time: 0.829 seconds
+[2025-04-01 15:47:00] Progress: 710/1000 iterations (71.0%) Loss: 0.520189 Speed: 1.22 it/s Batch Time: 0.838s GPU Mem: 119.8MB 
+[2025-04-01 15:47:08] Progress: 720/1000 iterations (72.0%) Loss: 0.459583 Speed: 1.22 it/s Batch Time: 0.818s GPU Mem: 119.8MB 
+[2025-04-01 15:47:08] 
+Detailed Log at Iteration 720:
+[2025-04-01 15:47:08] Loss: 0.459583
+[2025-04-01 15:47:08] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:47:08] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:47:08] GPU Utilization: 90%
+[2025-04-01 15:47:08] Training Speed: 1.22 iterations/second
+[2025-04-01 15:47:08] Elapsed Time: 0:09:52.502124
+[2025-04-01 15:47:08] Estimated Time Remaining: 230.4 seconds
+[2025-04-01 15:47:08] Average Batch Time: 0.818 seconds
+[2025-04-01 15:47:16] Progress: 730/1000 iterations (73.0%) Loss: 0.530294 Speed: 1.22 it/s Batch Time: 0.811s GPU Mem: 119.8MB 
+[2025-04-01 15:47:24] Progress: 740/1000 iterations (74.0%) Loss: 0.546395 Speed: 1.22 it/s Batch Time: 0.814s GPU Mem: 119.8MB 
+[2025-04-01 15:47:24] 
+Detailed Log at Iteration 740:
+[2025-04-01 15:47:24] Loss: 0.546395
+[2025-04-01 15:47:24] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:47:24] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:47:24] GPU Utilization: 85%
+[2025-04-01 15:47:24] Training Speed: 1.22 iterations/second
+[2025-04-01 15:47:24] Elapsed Time: 0:10:08.937737
+[2025-04-01 15:47:24] Estimated Time Remaining: 214.0 seconds
+[2025-04-01 15:47:24] Average Batch Time: 0.814 seconds
+[2025-04-01 15:47:33] Progress: 750/1000 iterations (75.0%) Loss: 0.375300 Speed: 1.22 it/s Batch Time: 0.798s GPU Mem: 119.8MB 
+[2025-04-01 15:47:41] Progress: 760/1000 iterations (76.0%) Loss: 0.544314 Speed: 1.22 it/s Batch Time: 0.841s GPU Mem: 119.8MB 
+[2025-04-01 15:47:41] 
+Detailed Log at Iteration 760:
+[2025-04-01 15:47:41] Loss: 0.544314
+[2025-04-01 15:47:41] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:47:41] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:47:41] GPU Utilization: 86%
+[2025-04-01 15:47:41] Training Speed: 1.22 iterations/second
+[2025-04-01 15:47:41] Elapsed Time: 0:10:25.484314
+[2025-04-01 15:47:41] Estimated Time Remaining: 197.5 seconds
+[2025-04-01 15:47:41] Average Batch Time: 0.841 seconds
+[2025-04-01 15:47:49] Progress: 770/1000 iterations (77.0%) Loss: 0.410956 Speed: 1.22 it/s Batch Time: 0.839s GPU Mem: 119.8MB 
+[2025-04-01 15:47:57] Progress: 780/1000 iterations (78.0%) Loss: 0.631214 Speed: 1.22 it/s Batch Time: 0.836s GPU Mem: 119.8MB 
+[2025-04-01 15:47:57] 
+Detailed Log at Iteration 780:
+[2025-04-01 15:47:57] Loss: 0.631214
+[2025-04-01 15:47:57] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:47:57] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:47:57] GPU Utilization: 84%
+[2025-04-01 15:47:57] Training Speed: 1.21 iterations/second
+[2025-04-01 15:47:57] Elapsed Time: 0:10:42.001174
+[2025-04-01 15:47:57] Estimated Time Remaining: 181.1 seconds
+[2025-04-01 15:47:57] Average Batch Time: 0.836 seconds
+[2025-04-01 15:48:06] Progress: 790/1000 iterations (79.0%) Loss: 0.483231 Speed: 1.22 it/s Batch Time: 0.824s GPU Mem: 119.8MB 
+[2025-04-01 15:48:14] Progress: 800/1000 iterations (80.0%) Loss: 0.392159 Speed: 1.22 it/s Batch Time: 0.816s GPU Mem: 119.8MB 
+[2025-04-01 15:48:14] 
+Detailed Log at Iteration 800:
+[2025-04-01 15:48:14] Loss: 0.392159
+[2025-04-01 15:48:14] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:48:14] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:48:14] GPU Utilization: 90%
+[2025-04-01 15:48:14] Training Speed: 1.21 iterations/second
+[2025-04-01 15:48:14] Elapsed Time: 0:10:58.464767
+[2025-04-01 15:48:14] Estimated Time Remaining: 164.6 seconds
+[2025-04-01 15:48:14] Average Batch Time: 0.816 seconds
+[2025-04-01 15:48:14] New best loss: 0.392159
+[2025-04-01 15:48:14] Model checkpoint saved at iteration 800
+[2025-04-01 15:48:22] Progress: 810/1000 iterations (81.0%) Loss: 0.664611 Speed: 1.21 it/s Batch Time: 0.804s GPU Mem: 119.8MB 
+[2025-04-01 15:48:30] Progress: 820/1000 iterations (82.0%) Loss: 0.458348 Speed: 1.22 it/s Batch Time: 0.805s GPU Mem: 119.8MB 
+[2025-04-01 15:48:30] 
+Detailed Log at Iteration 820:
+[2025-04-01 15:48:30] Loss: 0.458348
+[2025-04-01 15:48:30] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:48:30] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:48:30] GPU Utilization: 91%
+[2025-04-01 15:48:30] Training Speed: 1.21 iterations/second
+[2025-04-01 15:48:30] Elapsed Time: 0:11:14.912537
+[2025-04-01 15:48:30] Estimated Time Remaining: 148.2 seconds
+[2025-04-01 15:48:30] Average Batch Time: 0.805 seconds
+[2025-04-01 15:48:39] Progress: 830/1000 iterations (83.0%) Loss: 0.520722 Speed: 1.22 it/s Batch Time: 0.825s GPU Mem: 119.8MB 
+[2025-04-01 15:48:47] Progress: 840/1000 iterations (84.0%) Loss: 0.474751 Speed: 1.22 it/s Batch Time: 0.802s GPU Mem: 119.8MB 
+[2025-04-01 15:48:47] 
+Detailed Log at Iteration 840:
+[2025-04-01 15:48:47] Loss: 0.474751
+[2025-04-01 15:48:47] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:48:47] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:48:47] GPU Utilization: 88%
+[2025-04-01 15:48:47] Training Speed: 1.22 iterations/second
+[2025-04-01 15:48:47] Elapsed Time: 0:11:31.293033
+[2025-04-01 15:48:47] Estimated Time Remaining: 131.7 seconds
+[2025-04-01 15:48:47] Average Batch Time: 0.802 seconds
+[2025-04-01 15:48:55] Progress: 850/1000 iterations (85.0%) Loss: 0.420145 Speed: 1.22 it/s Batch Time: 0.803s GPU Mem: 119.8MB 
+[2025-04-01 15:49:03] Progress: 860/1000 iterations (86.0%) Loss: 0.577026 Speed: 1.22 it/s Batch Time: 0.800s GPU Mem: 119.8MB 
+[2025-04-01 15:49:03] 
+Detailed Log at Iteration 860:
+[2025-04-01 15:49:03] Loss: 0.577026
+[2025-04-01 15:49:03] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:49:03] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:49:03] GPU Utilization: 88%
+[2025-04-01 15:49:03] Training Speed: 1.22 iterations/second
+[2025-04-01 15:49:03] Elapsed Time: 0:11:47.538536
+[2025-04-01 15:49:03] Estimated Time Remaining: 115.2 seconds
+[2025-04-01 15:49:03] Average Batch Time: 0.800 seconds
+[2025-04-01 15:49:11] Progress: 870/1000 iterations (87.0%) Loss: 0.431111 Speed: 1.22 it/s Batch Time: 0.791s GPU Mem: 119.8MB 
+[2025-04-01 15:49:19] Progress: 880/1000 iterations (88.0%) Loss: 0.440751 Speed: 1.22 it/s Batch Time: 0.817s GPU Mem: 119.8MB 
+[2025-04-01 15:49:19] 
+Detailed Log at Iteration 880:
+[2025-04-01 15:49:19] Loss: 0.440751
+[2025-04-01 15:49:19] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:49:19] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:49:19] GPU Utilization: 89%
+[2025-04-01 15:49:19] Training Speed: 1.22 iterations/second
+[2025-04-01 15:49:19] Elapsed Time: 0:12:03.749525
+[2025-04-01 15:49:19] Estimated Time Remaining: 98.7 seconds
+[2025-04-01 15:49:19] Average Batch Time: 0.817 seconds
+[2025-04-01 15:49:27] Progress: 890/1000 iterations (89.0%) Loss: 0.545618 Speed: 1.22 it/s Batch Time: 0.820s GPU Mem: 119.8MB 
+[2025-04-01 15:49:36] Progress: 900/1000 iterations (90.0%) Loss: 0.537865 Speed: 1.22 it/s Batch Time: 0.843s GPU Mem: 119.8MB 
+[2025-04-01 15:49:36] 
+Detailed Log at Iteration 900:
+[2025-04-01 15:49:36] Loss: 0.537865
+[2025-04-01 15:49:36] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:49:36] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:49:36] GPU Utilization: 89%
+[2025-04-01 15:49:36] Training Speed: 1.22 iterations/second
+[2025-04-01 15:49:36] Elapsed Time: 0:12:20.327659
+[2025-04-01 15:49:36] Estimated Time Remaining: 82.3 seconds
+[2025-04-01 15:49:36] Average Batch Time: 0.843 seconds
+[2025-04-01 15:49:44] Progress: 910/1000 iterations (91.0%) Loss: 0.503867 Speed: 1.22 it/s Batch Time: 0.843s GPU Mem: 119.8MB 
+[2025-04-01 15:49:52] Progress: 920/1000 iterations (92.0%) Loss: 0.395636 Speed: 1.22 it/s Batch Time: 0.799s GPU Mem: 119.8MB 
+[2025-04-01 15:49:52] 
+Detailed Log at Iteration 920:
+[2025-04-01 15:49:52] Loss: 0.395636
+[2025-04-01 15:49:52] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:49:52] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:49:52] GPU Utilization: 91%
+[2025-04-01 15:49:52] Training Speed: 1.22 iterations/second
+[2025-04-01 15:49:52] Elapsed Time: 0:12:36.840855
+[2025-04-01 15:49:52] Estimated Time Remaining: 65.8 seconds
+[2025-04-01 15:49:52] Average Batch Time: 0.799 seconds
+[2025-04-01 15:50:00] Progress: 930/1000 iterations (93.0%) Loss: 0.381040 Speed: 1.22 it/s Batch Time: 0.827s GPU Mem: 119.8MB 
+[2025-04-01 15:50:10] Progress: 940/1000 iterations (94.0%) Loss: 0.455298 Speed: 1.21 it/s Batch Time: 1.122s GPU Mem: 119.8MB 
+[2025-04-01 15:50:10] 
+Detailed Log at Iteration 940:
+[2025-04-01 15:50:10] Loss: 0.455298
+[2025-04-01 15:50:10] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:50:10] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:50:10] GPU Utilization: 62%
+[2025-04-01 15:50:10] Training Speed: 1.21 iterations/second
+[2025-04-01 15:50:10] Elapsed Time: 0:12:54.718730
+[2025-04-01 15:50:10] Estimated Time Remaining: 49.5 seconds
+[2025-04-01 15:50:10] Average Batch Time: 1.122 seconds
+[2025-04-01 15:50:20] Progress: 950/1000 iterations (95.0%) Loss: 0.384874 Speed: 1.21 it/s Batch Time: 1.046s GPU Mem: 119.8MB 
+[2025-04-01 15:50:30] Progress: 960/1000 iterations (96.0%) Loss: 0.564846 Speed: 1.21 it/s Batch Time: 0.865s GPU Mem: 119.8MB 
+[2025-04-01 15:50:30] 
+Detailed Log at Iteration 960:
+[2025-04-01 15:50:30] Loss: 0.564846
+[2025-04-01 15:50:30] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:50:30] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:50:30] GPU Utilization: 73%
+[2025-04-01 15:50:30] Training Speed: 1.21 iterations/second
+[2025-04-01 15:50:30] Elapsed Time: 0:13:14.978942
+[2025-04-01 15:50:30] Estimated Time Remaining: 33.1 seconds
+[2025-04-01 15:50:30] Average Batch Time: 0.865 seconds
+[2025-04-01 15:50:41] Progress: 970/1000 iterations (97.0%) Loss: 0.361527 Speed: 1.20 it/s Batch Time: 1.079s GPU Mem: 119.8MB 
+[2025-04-01 15:50:51] Progress: 980/1000 iterations (98.0%) Loss: 0.529275 Speed: 1.20 it/s Batch Time: 0.966s GPU Mem: 119.8MB 
+[2025-04-01 15:50:51] 
+Detailed Log at Iteration 980:
+[2025-04-01 15:50:51] Loss: 0.529275
+[2025-04-01 15:50:51] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:50:51] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:50:51] GPU Utilization: 62%
+[2025-04-01 15:50:51] Training Speed: 1.20 iterations/second
+[2025-04-01 15:50:51] Elapsed Time: 0:13:35.596161
+[2025-04-01 15:50:51] Estimated Time Remaining: 16.6 seconds
+[2025-04-01 15:50:51] Average Batch Time: 0.966 seconds
+[2025-04-01 15:51:01] Progress: 990/1000 iterations (99.0%) Loss: 0.332768 Speed: 1.20 it/s Batch Time: 0.972s GPU Mem: 119.8MB 
+[2025-04-01 15:51:10] Progress: 1000/1000 iterations (100.0%) Loss: 0.483693 Speed: 1.20 it/s Batch Time: 0.823s GPU Mem: 119.8MB 
+[2025-04-01 15:51:10] 
+Detailed Log at Iteration 1000:
+[2025-04-01 15:51:10] Loss: 0.483693
+[2025-04-01 15:51:10] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:51:10] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:51:10] GPU Utilization: 89%
+[2025-04-01 15:51:10] Training Speed: 1.20 iterations/second
+[2025-04-01 15:51:10] Elapsed Time: 0:13:54.202247
+[2025-04-01 15:51:10] Estimated Time Remaining: 0.0 seconds
+[2025-04-01 15:51:10] Average Batch Time: 0.823 seconds
+[2025-04-01 15:51:10] Model checkpoint saved at iteration 1000
+[2025-04-01 15:51:20] Progress: 1010/1000 iterations (101.0%) Loss: 0.400644 Speed: 1.20 it/s Batch Time: 1.020s GPU Mem: 119.8MB 
+[2025-04-01 15:51:29] Progress: 1020/1000 iterations (102.0%) Loss: 0.393468 Speed: 1.19 it/s Batch Time: 0.900s GPU Mem: 119.8MB 
+[2025-04-01 15:51:29] 
+Detailed Log at Iteration 1020:
+[2025-04-01 15:51:29] Loss: 0.393468
+[2025-04-01 15:51:29] GPU Memory Allocated: 119.8 MB
+[2025-04-01 15:51:29] GPU Memory Cached: 1902.0 MB
+[2025-04-01 15:51:29] GPU Utilization: 79%
+[2025-04-01 15:51:29] Training Speed: 1.19 iterations/second
+[2025-04-01 15:51:29] Elapsed Time: 0:14:13.865710
+[2025-04-01 15:51:29] Estimated Time Remaining: -16.7 seconds
+[2025-04-01 15:51:29] Average Batch Time: 0.900 seconds
+[2025-04-01 15:51:39] Progress: 1030/1000 iterations (103.0%) Loss: 0.427263 Speed: 1.19 it/s Batch Time: 1.038s GPU Mem: 119.8MB 
