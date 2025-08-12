@@ -2,8 +2,8 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.util import calc_diffusion_step_embedding
-from models.S4Model import S4Layer
+from sssd.utils.util import calc_diffusion_step_embedding
+from sssd.models.S4Model import S4Layer
 
 
 def swish(x):
@@ -173,8 +173,8 @@ class SSSD_ECG(nn.Module):
 
         self.init_conv = nn.Sequential(Conv(in_channels, res_channels, kernel_size=1), nn.ReLU())
         
-        # Replace embedding with linear projection for continuous labels
-        self.label_proj = nn.Linear(5, label_embed_dim) if label_embed_classes > 0 else None
+        # embedding for global conditioning
+        self.embedding = nn.Embedding(label_embed_classes, label_embed_dim) if label_embed_classes>0 is not None else None
                 
         self.residual_layer = Residual_group(res_channels=res_channels, 
                                              skip_channels=skip_channels, 
@@ -194,17 +194,15 @@ class SSSD_ECG(nn.Module):
                                         nn.ReLU(),
                                         ZeroConv1d(skip_channels, out_channels))
 
-        # Enable gradient checkpointing by default
-        self.use_checkpointing = True
-
     def forward(self, input_data):
-        x, label, diffusion_steps = input_data
         
-        # Project continuous labels to embedding space
-        label_embed = self.label_proj(label) if self.label_proj is not None else None
+        noise, label, diffusion_steps = input_data
+
+        label_embed = label @ self.embedding.weight if self.embedding is not None else None
         
+        x = noise
         x = self.init_conv(x)
         x = self.residual_layer((x, label_embed, diffusion_steps))
-        x = self.final_conv(x)
-        
-        return x
+        y = self.final_conv(x)
+
+        return y

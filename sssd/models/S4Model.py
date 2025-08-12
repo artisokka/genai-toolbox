@@ -577,25 +577,25 @@ class SSKernelNPLR(nn.Module):
         # Register parameters
         # C is a regular parameter, not state
         # self.C = nn.Parameter(_c2r(C.conj().resolve_conj()))
-        self.C = nn.Parameter(_c2r(_resolve_conj(C)))
+        self.C = nn.Parameter(_c2r(_resolve_conj(C)).contiguous().clone())
         train = False
         if trainable is None: trainable = {}
         if trainable == False: trainable = {}
         if trainable == True: trainable, train = {}, True
         self.register("log_dt", log_dt, trainable.get('dt', train), lr, 0.0)
-        self.register("B", _c2r(B), trainable.get('B', train), lr, 0.0)
-        self.register("P", _c2r(P), trainable.get('P', train), lr, 0.0)
+        self.register("B", _c2r(B).contiguous().clone(), trainable.get('B', train), lr, 0.0)
+        self.register("P", _c2r(P).contiguous().clone(), trainable.get('P', train), lr, 0.0)
         if self.hurwitz:
             log_w_real = torch.log(-w.real + 1e-3) # Some of the HiPPO methods have real part 0
             w_imag = w.imag
-            self.register("log_w_real", log_w_real, trainable.get('A', 0), lr, 0.0)
-            self.register("w_imag", w_imag, trainable.get('A', train), lr, 0.0)
+            self.register("log_w_real", log_w_real.contiguous().clone(), trainable.get('A', 0), lr, 0.0)
+            self.register("w_imag", w_imag.contiguous().clone(), trainable.get('A', train), lr, 0.0)
             self.Q = None
         else:
-            self.register("w", _c2r(w), trainable.get('A', train), lr, 0.0)
+            self.register("w", _c2r(w).contiguous().clone(), trainable.get('A', train), lr, 0.0)
             # self.register("Q", _c2r(P.clone().conj().resolve_conj()), trainable.get('P', train), lr, 0.0)
             Q = _resolve_conj(P.clone())
-            self.register("Q", _c2r(Q), trainable.get('P', train), lr, 0.0)
+            self.register("Q", _c2r(Q).contiguous().clone(), trainable.get('P', train), lr, 0.0)
 
         if length_correction:
             self._setup_C()
@@ -912,6 +912,8 @@ class SSKernelNPLR(nn.Module):
     def register(self, name, tensor, trainable=False, lr=None, wd=None):
         """Utility method: register a tensor as a buffer or trainable parameter"""
 
+        # Ensure unique, contiguous storage to avoid aliasing issues on state_dict load
+        tensor = tensor.contiguous().clone()
         if trainable:
             self.register_parameter(name, nn.Parameter(tensor))
         else:
