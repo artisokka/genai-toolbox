@@ -1,13 +1,14 @@
-# Edited to support generating ecg samples using an untrained model for establishing a baseline
 import os
 import argparse
 import json
 import numpy as np
 import torch
 import time
-from utils.util import find_max_epoch, print_size, sampling_label, calc_diffusion_hyperparams
-from models.SSSD_ECG import SSSD_ECG
-from utils.monitoring import ProgressMonitor
+from datetime import datetime
+
+from sssd.utils.util import find_max_epoch, print_size, sampling_label, calc_diffusion_hyperparams
+from sssd.models.SSSD_ECG import SSSD_ECG
+
 
 
 def generate_four_leads(tensor):
@@ -26,219 +27,120 @@ def generate_four_leads(tensor):
     return leads12
 
 
-def save_checkpoint(samples, labels, batch_idx, subbatch_idx, output_directory):
-    """Save intermediate results as checkpoint"""
-    checkpoint_dir = os.path.join(output_directory, 'checkpoints')
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    
-    checkpoint_path = os.path.join(checkpoint_dir, f'batch_{batch_idx}_subbatch_{subbatch_idx}.npz')
-    np.savez(checkpoint_path, samples=samples, labels=labels)
-    return checkpoint_path
 
-
-def load_checkpoint(batch_idx, subbatch_idx, output_directory):
-    """Load checkpoint if it exists"""
-    checkpoint_path = os.path.join(output_directory, 'checkpoints', f'batch_{batch_idx}_subbatch_{subbatch_idx}.npz')
-    if os.path.exists(checkpoint_path):
-        checkpoint = np.load(checkpoint_path)
-        return checkpoint['samples'], checkpoint['labels']
-    return None, None
-
-
-def generate(output_directory,
+def generate(model_config,
+                diffusion_config,
+                diffusion_hyperparams,
+                output_directory,
              num_samples,
              ckpt_path,
-             ckpt_iter,
-             batch_size=100):  # Reduced batch size for better memory management
+             data_path,
+             ckpt_iter
+             ):
+    
     
     """
-    Generate data based on ground truth with improved memory management and monitoring
+    Generates synthetic ECG data
     """
-    # generate experiment (local) path
-    local_path = "ch{}_T{}_betaT{}".format(model_config["res_channels"], 
-                                           diffusion_config["T"], 
-                                           diffusion_config["beta_T"])
+    
+    # --- 1. Setup Environment ---
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Save directly under the provided output directory (no model/diffusion subdir)
+    os.makedirs(output_directory, exist_ok=True)
+    
+    # Create a unique run subfolder to avoid overwriting
+    run_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    run_directory = os.path.join(output_directory, f'run_{run_stamp}')
+    os.makedirs(run_directory, exist_ok=True)
+    print(f"Output directory: {run_directory}", flush=True)
 
-    # Get shared output_directory ready
-    output_directory = os.path.join(output_directory, local_path)
-    if not os.path.isdir(output_directory):
-        os.makedirs(output_directory)
-        os.chmod(output_directory, 0o775)
-    print("output directory", output_directory, flush=True)
-
-    # map diffusion hyperparameters to gpu
+    diffusion_hyperparams = calc_diffusion_hyperparams(**diffusion_config)
     for key in diffusion_hyperparams:
         if key != "T":
-            diffusion_hyperparams[key] = diffusion_hyperparams[key].cuda()
+            diffusion_hyperparams[key] = diffusion_hyperparams[key].to(device)
 
-    # predefine model
-    net = SSSD_ECG(**model_config).cuda()
+    # --- 2. Initialize and Load Model ---
+    net = SSSD_ECG(**model_config).to(device)
     print_size(net)
-    
+
     if ckpt_iter == 'max':
         ckpt_iter = find_max_epoch(ckpt_path)
     
-    # Handle untrained model (iteration 0)
-    if ckpt_iter == 0:
-        print('Using untrained model for baseline generation')
-    else:
-        # load checkpoint
-        model_path = os.path.join(ckpt_path, '{}.pkl'.format(ckpt_iter))
-        print(f"Looking for checkpoint at: {model_path}")
-        print(f"Checkpoint exists: {os.path.exists(model_path)}")
-        
-        if not os.path.exists(model_path):
-            raise Exception('No valid model found at iteration {}'.format(ckpt_iter))
-        checkpoint = torch.load(model_path, map_location='cpu')
-        net.load_state_dict(checkpoint['model_state_dict'])
-        print('Successfully loaded model at iteration {}'.format(ckpt_iter))
+    model_path = os.path.join(ckpt_path, f'{ckpt_iter}.pkl')
+    try:
+        if not os.path.exists(model_path) or os.path.getsize(model_path) == 0:
+            raise FileNotFoundError(f'Checkpoint missing or empty at: {model_path}')
+        checkpoint = torch.load(model_path, map_location=device)
+        state_dict = checkpoint.get('model_state_dict', checkpoint)
+        try:
+            net.load_state_dict(state_dict, strict=True)
+            print(f'Successfully loaded model at iteration {ckpt_iter} onto device "{device}" (strict=True)')
+        except RuntimeError as e:
+            print("Warning: strict load failed due to key mismatch. Retrying with strict=False. Details:\n", e)
+            try:
+                net.load_state_dict(state_dict, strict=False)
+                print('Non-strict load succeeded. Some parameters were not loaded exactly. Proceeding...')
+            except Exception as e2:
+                raise Exception(f'Error loading model non-strictly: {e2}')
+    except FileNotFoundError:
+        raise Exception(f'Model checkpoint not found at: {model_path}')
+    except Exception as e:
+        print("\n" + "="*80)
+        print("CRITICAL ERROR: MODEL LOADING FAILED - ARCHITECTURE MISMATCH")
+        print("="*80)
+        print(f"Error details: {e}")
+        print("\nThis error means the model definition in your Python code (SSSD_ECG.py, S4Model.py)")
+        print("does NOT match the architecture of the saved checkpoint file. The layers or their")
+        print("parameters are different.")
+        print("\nTroubleshooting:")
+        print("1. Ensure you are using the exact 'SSSD_ECG.py' and 'S4Model.py' files that were")
+        print("   used to train and save the model checkpoint.")
+        print("2. The error message above might list 'unexpected keys' or 'missing keys'.")
+        print("   This tells you exactly which layers are different between your code and the file.")
+        print("="*80 + "\n")
+        raise Exception(f'Error loading model: {e}')
 
-    # Load labels
-    labels = np.load('data/ptbxl_test_labels.npy')
-    label_batches = [
-        labels[0:400],
-        labels[400:800],
-        labels[800:1200],
-        labels[1200:1600],
-        labels[1600:2000],
-        labels[2000:]
-    ]
+    # --- 3. Generate Data ---
+    try:
+        labels = np.load(os.path.join(data_path, 'labels/ptbxl_test_labels.npy'))
+        # Select only the requested number of samples
+        total = labels.shape[0]
+        if num_samples < total:
+            idx = np.random.choice(total, size=num_samples, replace=False)
+            labels = labels[idx]
+        else:
+            labels = labels[:num_samples]
+    except FileNotFoundError:
+        print("Warning: ptbxl_test_labels.npy not found. Generating random labels instead.")
+        num_classes = model_config.get("label_embed_classes")
+        if not num_classes:
+            raise ValueError("Could not determine number of classes from model_config for random label generation.")
+        labels = np.random.rand(num_samples, num_classes)
+
+    # Single batch honoring num_samples
+    label_batches = [labels]
     
-    # Initialize progress monitor
-    monitor = ProgressMonitor(
-        total_steps=diffusion_config["T"],
-        batch_size=batch_size,
-        num_batches=len(label_batches)
-    )
-    
-    # Process each batch
-    for batch_idx, label_batch in enumerate(label_batches):
-        print(f"\nProcessing batch {batch_idx + 1}/{len(label_batches)}")
+    for i, label_batch in enumerate(label_batches):
+        cond = torch.from_numpy(label_batch).to(device).float()
         
-        # Split batch into smaller subbatches
-        num_subbatches = (num_samples + batch_size - 1) // batch_size
-        all_samples = []
-        all_labels = []
+        start_time = time.time()
+
+        generated_audio = sampling_label(
+            net,
+            (len(label_batch), model_config["in_channels"], 1000),
+            diffusion_hyperparams,
+            cond=cond
+        )
+        generated_audio12 = generate_four_leads(generated_audio)
         
-        for subbatch_idx in range(num_subbatches):
-            start_idx = subbatch_idx * batch_size
-            end_idx = min((subbatch_idx + 1) * batch_size, num_samples)
-            current_batch_size = end_idx - start_idx
-            
-            # Check for existing checkpoint
-            samples, labels = load_checkpoint(batch_idx, subbatch_idx, output_directory)
-            if samples is not None:
-                print(f"\nLoading checkpoint for batch {batch_idx + 1}, subbatch {subbatch_idx + 1}")
-                all_samples.append(samples)
-                all_labels.append(labels)
-                continue
-            
-            # Generate new samples
-            cond = torch.from_numpy(label_batch[start_idx:end_idx]).cuda().float()
-            
-            # Generate samples with monitoring
-            generated_audio = sampling_label(net, (current_batch_size, 8, 1000), 
-                                          diffusion_hyperparams,
-                                          cond=cond,
-                                          monitor=monitor,
-                                          current_batch=batch_idx)
-            
-            generated_audio12 = generate_four_leads(generated_audio)
-            
-            # Save checkpoint
-            save_checkpoint(
-                generated_audio12.detach().cpu().numpy(),
-                cond.detach().cpu().numpy(),
-                batch_idx,
-                subbatch_idx,
-                output_directory
-            )
-            
-            all_samples.append(generated_audio12.detach().cpu().numpy())
-            all_labels.append(cond.detach().cpu().numpy())
-            
-            # Clear GPU memory
-            torch.cuda.empty_cache()
+        end_time = time.time()
+        print(f'Generated {len(label_batch)} samples in {end_time - start_time:.2f} seconds')
+
+        # --- 4. Save Output ---
+        samples_outfile = os.path.join(run_directory, f'{i}_samples.npy')
+        np.save(samples_outfile, generated_audio12.detach().cpu().numpy())
+        print(f'Saved samples to {samples_outfile}')
         
-        # Combine all subbatches
-        samples = np.concatenate(all_samples, axis=0)
-        labels = np.concatenate(all_labels, axis=0)
-        
-        # Save final results
-        outfile = f'{batch_idx}_samples.npy'
-        new_out = os.path.join(output_directory, outfile)
-        np.save(new_out, samples)
-        print(f'\nSaved generated samples for batch {batch_idx + 1}')
-        
-        outfile = f'{batch_idx}_labels.npy'
-        new_out = os.path.join(output_directory, outfile)
-        np.save(new_out, labels)
-        print(f'Saved labels for batch {batch_idx + 1}')
-        
-        # Clear memory
-        del all_samples, all_labels
-        torch.cuda.empty_cache()
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, default='config/config_SSSD_ECG.json',
-                        help='JSON file for configuration')
-    parser.add_argument('-ckpt_iter', '--ckpt_iter', type=str, default='100000',
-                        help='Which checkpoint to use; assign a number or "max"')
-    parser.add_argument('-n', '--num_samples', type=int, default=400,
-                        help='Number of utterances to be generated')
-    parser.add_argument('-b', '--batch_size', type=int, default=100,
-                        help='Batch size for generation (default: 100)')
-    args = parser.parse_args()
-
-    # Parse configs. Globals nicer in this case
-    with open(args.config) as f:
-        data = f.read()
-    config = json.loads(data)
-    print(config)
-
-    gen_config = config['gen_config']
-    train_config = config["train_config"]  # training parameters
-
-    global trainset_config
-    trainset_config = config["trainset_config"]  # to load trainset
-
-    global diffusion_config
-    diffusion_config = config["diffusion_config"]  # basic hyperparameters
-
-    global diffusion_hyperparams
-    diffusion_hyperparams = calc_diffusion_hyperparams(**diffusion_config)  # dictionary of all diffusion hyperparameters
-
-    global model_config
-    model_config = config['wavenet_config']
-
-    # Convert ckpt_iter to int if it's not 'max'
-    if args.ckpt_iter != 'max':
-        args.ckpt_iter = int(args.ckpt_iter)
-
-    # Get absolute path to checkpoint directory
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    checkpoint_dir = os.path.join(current_dir, 'exp', 'ch64_T50_betaT0.02')
-    print(f"Using checkpoint directory: {checkpoint_dir}")
-    print(f"Directory exists: {os.path.exists(checkpoint_dir)}")
-    
-    # Override the checkpoint path in gen_config
-    gen_config['ckpt_path'] = checkpoint_dir
-
-    # Modify model config to match checkpoint architecture
-    model_config['res_channels'] = 64
-    model_config['skip_channels'] = 64
-    model_config['diffusion_step_embed_dim_in'] = 128
-    model_config['diffusion_step_embed_dim_mid'] = 512
-    model_config['diffusion_step_embed_dim_out'] = 512
-    model_config['label_embed_dim'] = 128
-
-    print("Modified model configuration to match checkpoint:")
-    print(json.dumps(model_config, indent=2))
-
-    generate(**gen_config,
-             ckpt_iter=args.ckpt_iter,
-             num_samples=args.num_samples,
-             batch_size=args.batch_size)
-
+        labels_outfile = os.path.join(run_directory, f'{i}_labels.npy')
+        np.save(labels_outfile, cond.detach().cpu().numpy())
+        print(f'Saved labels to {labels_outfile}')

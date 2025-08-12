@@ -51,12 +51,14 @@ def print_size(net):
 
 # Utilities for diffusion models
 
-def std_normal(size):
+def std_normal(size, device=None):
     """
-    Generate the standard Gaussian variable of a certain size
+    Generate the standard Gaussian variable of a certain size on the specified device.
     """
 
-    return torch.normal(0, 1, size=size).cuda()
+    if device is None:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    return torch.normal(0, 1, size=size, device=device)
 
 
 def calc_diffusion_step_embedding(diffusion_steps, diffusion_step_embed_dim_in):
@@ -79,7 +81,7 @@ def calc_diffusion_step_embedding(diffusion_steps, diffusion_step_embed_dim_in):
 
     half_dim = diffusion_step_embed_dim_in // 2
     _embed = np.log(10000) / (half_dim - 1)
-    _embed = torch.exp(torch.arange(half_dim) * -_embed).cuda()
+    _embed = torch.exp(torch.arange(half_dim, device=diffusion_steps.device) * -_embed)
     _embed = diffusion_steps * _embed
     diffusion_step_embed = torch.cat((torch.sin(_embed),
                                       torch.cos(_embed)), 1)
@@ -119,7 +121,8 @@ def calc_diffusion_hyperparams(T, beta_0, beta_T):
     return diffusion_hyperparams
 
   
-def sampling_label(net, size, diffusion_hyperparams, cond=None, monitor=None, current_batch=0):
+
+def sampling_label(net, size, diffusion_hyperparams, cond=None):
     """
     Perform the complete sampling step according to p(x_0|x_T) = \prod_{t=1}^T p_{\theta}(x_{t-1}|x_t)
 
@@ -130,8 +133,7 @@ def sampling_label(net, size, diffusion_hyperparams, cond=None, monitor=None, cu
     diffusion_hyperparams (dict):   dictionary of diffusion hyperparameters returned by calc_diffusion_hyperparams
                                     note, the tensors need to be cuda tensors 
     cond: conditioning as integer tensor
-    monitor: ProgressMonitor instance for tracking progress
-    current_batch: current batch index for progress tracking
+    guidance_weight: weight for classifier-free guidance (if trained with conditioning_dropout>0)
     
     Returns:
     the generated audio(s) in torch.tensor, shape=size
@@ -144,24 +146,18 @@ def sampling_label(net, size, diffusion_hyperparams, cond=None, monitor=None, cu
     assert len(Sigma) == T
     assert len(size) == 3
     
-    if monitor is not None:
-        monitor.update(T-1, current_batch)  # Initialize progress at first step
+    print('begin sampling, total number of reverse steps = %s' % T)
 
-    x = std_normal(size)
+    device = next(net.parameters()).device
+    x = std_normal(size, device=device)
     with torch.no_grad():
         for t in range(T-1, -1, -1):
-            if monitor is not None:
-                monitor.update(t, current_batch)
-                
-            diffusion_steps = (t * torch.ones((size[0], 1))).cuda()  # use the corresponding reverse step
+            diffusion_steps = (t * torch.ones((size[0], 1), device=device))  # use the corresponding reverse step
             epsilon_theta = net((x, cond, diffusion_steps,))  # predict \epsilon according to \epsilon_\theta
                 
             x = (x - (1-Alpha[t])/torch.sqrt(1-Alpha_bar[t]) * epsilon_theta) / torch.sqrt(Alpha[t])  # update x_{t-1} to \mu_\theta(x_t)
             if t > 0:
-                x = x + Sigma[t] * std_normal(size)  # add the variance term to x_{t-1}
-                
-    if monitor is not None:
-        monitor.new_batch()
+                x = x + Sigma[t] * std_normal(size, device=device)  # add the variance term to x_{t-1}
     return x
 
 
