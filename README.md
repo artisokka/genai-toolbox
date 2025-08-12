@@ -1,107 +1,117 @@
-# SynthGen: Generate synthetic tabular health data and ECG's
+## GenAI Toolbox: Synthetic Health Data Generator
 
-This project implements a Signal Space Diffusion Model for generating synthetic ECG signals and XXX for implementing synthetic tabular data. It uses a combination of WaveNet architecture and diffusion models to generate high-quality ECG waveforms.
+A Streamlit app that lets you:
+- Generate synthetic 12‑lead ECG waveforms with an SSSD‑ECG diffusion model
+- Visualize generated ECGs in a standard clinical layout
+- Build a FAISS index from your PDFs and query it via a local LLM (Ollama)
 
-## Features
-- ECG signal generation using diffusion models
-- WaveNet-based architecture
-- Label-conditional generation
-- Streamlit web interface for easy interaction
+### What’s inside
+- **ECG generator**: Structured State Space + WaveNet diffusion model, label‑conditional
+- **RAG**: Convert PDFs → text → FAISS index, query using `llama3.1` via Ollama
 
-## Installation
+## Setup
 
-1. Clone the repository:
+1) Clone the repository
 ```bash
-git clone <your-repository-url>
-cd <repository-name>
+git clone https://github.com/artisokka/genai-toolbox
+cd genai-toolbox
 ```
 
-2. Create and activate a virtual environment:
+2) Create and activate a virtualenv
 ```bash
 python -m venv venv
-# On Windows
-.\venv\Scripts\activate
-# On Unix/Linux
+# Windows
+.\\venv\\Scripts\\activate
+# macOS/Linux
 source venv/bin/activate
 ```
 
-3. Install dependencies:
+3) Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-## Project Structure 
+4) Install Ollama and the local model for RAG
+```bash
+# Install Ollama from https://ollama.com
+ollama pull llama3.1
+```
 
-.
-├── sssd/
-│ ├── config/
-│ │ └── config_SSSD_ECG.json
-│ └── ...
-├── rag/
-│ └── main.py
-├── requirements.txt
-└── README.md
-
-## Configuration
-
-The model configuration is defined in `sssd/config/config_SSSD_ECG.json` and includes:
-- Diffusion parameters (T, beta values)
-- WaveNet architecture settings
-- Training configuration
-- Dataset parameters
-- Generation settings
-
-## Usage
-
-Run the Streamlit app:
+## Run the app
 ```bash
 python -m streamlit run synthgen_app.py
 ```
 
-## Model Architecture
+## ECG generation
+- Config file: `sssd/config/config_SSSD_ECG.json`
+  - `gen_config.output_directory`: where outputs are saved (default `generated_ecg/`)
+  - `gen_config.ckpt_path`: folder containing model checkpoint `.pkl` files (default `sssd_label_cond/`)
+- In the app under “Synthetic ECG Generation”:
+  - Set checkpoint iteration (`max` uses the latest file in `ckpt_path`)
+  - Choose number of samples and click “Generate”
+- Outputs are saved to:
+  - `generated_ecg/run_YYYYmmDD_HHMMSS/` containing `*_samples.npy` and matching `*_labels.npy`
+- Visualization:
+  - The app lists available `run_*` folders and lets you preview batches and per‑sample plots
 
-The model uses:
-- WaveNet-based architecture with residual layers
-- Diffusion process with T=200 steps
-- S4 layers for improved temporal modeling
-- Label conditioning for controlled generation
+Notes
+- If you don’t provide label files, the generator will sample random labels using the configured number of classes.
+- To use your dataset labels, place `ptbxl_test_labels.npy` under `<data_path>/labels/` and add `data_path` under `trainset_config` in the config.
 
-## Requirements
-- Python 3.8+
-- PyTorch
-- Streamlit
-- Additional dependencies in requirements.txt
+## RAG: Query your documents
+The app expects a FAISS index in `rag/DataIndex/`.
 
-## Credits
+Build it from your PDFs:
+```bash
+# 1) Convert PDFs → text
+python rag/pdf_to_text.py           # reads from rag/Data, writes rag/DataTxt
 
-This project builds upon the research presented in:
+# 2) Create FAISS index from text
+python rag/txt_to_index.py          # reads rag/DataTxt, writes rag/DataIndex
+```
+Then use the “Tabular Health Data” tab to ask questions. The app will load the index and query `llama3.1` via Ollama.
 
-Lopez Alcaraz, J. M., & Strodthoff, N. (2023). Diffusion-based conditional ECG generation with structured state space models. Computers in Biology and Medicine, 163, 107115.
+## Project structure
+```bash
+.
+├── synthgen_app.py                # Streamlit app (ECG + RAG)
+├── sssd/
+│   ├── models/                    # SSSD‑ECG model
+│   ├── utils/                     # helpers
+│   ├── visualize_ecg.py           # plotting utilities
+│   └── config/config_SSSD_ECG.json
+├── rag/
+│   ├── pdf_to_text.py             # PDFs → text
+│   ├── txt_to_index.py            # text → FAISS index
+│   └── main.py                    # RAG chain helpers
+└── generated_ecg/                 # outputs (created at runtime)
+```
 
+## References
 ```text
 @article{ALCARAZ2023107115,
-    title = {Diffusion-based conditional ECG generation with structured state space models},
-    journal = {Computers in Biology and Medicine},
-    volume = {163},
-    pages = {107115},
-    year = {2023},
-    issn = {0010-4825},
-    doi = {https://doi.org/10.1016/j.compbiomed.2023.107115},
-    url = {https://www.sciencedirect.com/science/article/pii/S0010482523005802},
-    author = {Juan Miguel Lopez Alcaraz and Nils Strodthoff},
-    keywords = {Cardiology, Electrocardiography, Signal processing, Synthetic data, Diffusion models, Time series}
+  title={Diffusion-based conditional ECG generation with structured state space models},
+  journal={Computers in Biology and Medicine},
+  volume={163},
+  pages={107115},
+  year={2023},
+  doi={10.1016/j.compbiomed.2023.107115},
+  author={Juan Miguel Lopez Alcaraz and Nils Strodthoff}
+}
+```
+```text
+@misc{khan2024developingretrievalaugmentedgeneration,
+  title={Developing Retrieval Augmented Generation (RAG) based LLM Systems from PDFs: An Experience Report},
+  author={Khan, A. A. and Hasan, M. T. and Kemell, K. K. and Rasku, J. and Abrahamsson, P.},
+  year={2024},
+  eprint={2410.15944},
+  archivePrefix={arXiv},
+  primaryClass={cs.SE}
 }
 ```
 
-### Original Implementation
-- [Link to original paper](https://www.sciencedirect.com/science/article/pii/S0010482523005802)
-- [Link to original code repository](https://github.com/AI4HealthUOL/SSSD-ECG)
+### Original implementation
+- Paper: https://www.sciencedirect.com/science/article/pii/S0010482523005802
+- Code: https://github.com/AI4HealthUOL/SSSD-ECG
 
-This implementation extends the original work by integrating SSSD-ECG inference functionality as a part of a larger web app.
-
-## License
-MIT License
-
-## Contact
-[Your contact information]
-
+License: MIT

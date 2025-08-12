@@ -22,21 +22,25 @@
         "label_embed_classes":71
     },
     "train_config": {
-        "output_directory": "exp/",
-        "ckpt_iter": -1,
-        "n_iters": 1000,
-        "iters_per_ckpt": 200,
-        "iters_per_logging": 20,
-        "learning_rate": 0.0002,
-        "batch_size": 4
+        "output_directory": "sssd_label_cond",
+        "ckpt_iter": "max",
+        "iters_per_ckpt": 4000,
+        "iters_per_logging": 100,
+        "n_iters": 100000,
+        "learning_rate": 2e-4,
+        "batch_size":8
     },
     "trainset_config":{
         "segment_length":1000,
         "sampling_rate": 100,
-        "finetune_dataset":"ptbxl_all"
+        "finetune_dataset":"ptbxl_all",
+        "data_path":"sssd/Dataset/"
     },
     "gen_config":{
-        "output_directory": "sssd_label_cond",
-        "ckpt_path": "sssd_label_cond/"
+        "output_directory": "generated_ecg",
+        "ckpt_path": "sssd/checkpoint/"
+    },
+    "inference_config": {
+        "batch_size": 8
     }
 }
