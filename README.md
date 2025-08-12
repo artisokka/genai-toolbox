@@ -31,7 +31,17 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4) Install Ollama and the local model for RAG
+4) Download the SSSD‑ECG checkpoint (required for ECG generation)
+```bash
+# Create the checkpoint folder and download the 100000.pkl weights
+mkdir -p sssd/checkpoint
+curl -L -o sssd/checkpoint/100000.pkl "https://figshare.com/s/81834b24a4711c2a5c55?file=38890809"
+
+# Alternatively, download via browser and place the file at:
+# sssd/checkpoint/100000.pkl
+```
+
+5) Install Ollama and the local model for RAG
 ```bash
 # Install Ollama from https://ollama.com
 ollama pull llama3.1
