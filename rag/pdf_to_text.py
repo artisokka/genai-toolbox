@@ -28,8 +28,15 @@ def convert_pdfs_to_text(pdf_folder, text_folder):
 
 
 if __name__ == "__main__":
+    # Get the script's directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
     # Specify the folder with your PDFs
-    pdf_folder = "Data"
+    pdf_folder = os.path.join(script_dir, "Data")
     # Specify the folder where you want to save .txt files
-    text_folder = "DataTxt"
+    text_folder = os.path.join(script_dir, "DataTxt")
+    
+    print(f"Converting PDFs from: {pdf_folder}")
+    print(f"Saving text files to: {text_folder}")
+    
     convert_pdfs_to_text(pdf_folder, text_folder)
