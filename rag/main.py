@@ -43,17 +43,9 @@ def create_rag_system(index_path, embedding_model='sentence-transformers/all-Min
         openai_api_base=os.environ.get("OPENAI_BASE_URL")
     )
 
-    # Create a more detailed prompt template
+    # Create a focused prompt template for medical data generation
     prompt_template = """
-    You are an expert medical data scientist assistant. You have access to the following context extracted from scientific papers and documents.
-
-    Your task is to:
-
-    1. Analyze the context to identify important clinical variables, measurements, and data types relevant to the patient population or study.
-    2. Design a synthetic tabular dataset schema capturing these key features.
-    3. Generate **realistic synthetic patient data** — creating new, plausible values that reflect the characteristics described but **never copying or reproducing any actual patient data or text** from the documents.
-    4. Provide narrative patient reports based on the synthetic data for each synthetic patient in the table using column named 'patient_report'.
-    5. Explain any assumptions or reasoning behind your data generation choices.
+    You are an expert medical data scientist. Use the following context to answer questions about medical data and generate synthetic datasets.
 
     Context:
     {context}
@@ -62,15 +54,11 @@ def create_rag_system(index_path, embedding_model='sentence-transformers/all-Min
     {question}
 
     Instructions:
-    - Do **not** copy or reuse any real patient data, names, or exact values found in the documents.
-    - Create entirely new synthetic data that is consistent with the clinical context and realistic distributions.
-    - Clearly highlight any assumptions or estimations you make.
-    - Format your response with:
-        - A table schema with variable names, types, and descriptions.
-        - Synthetic patient data rows.
-        - Patient narrative reports that are consistent with the synthetic data.
-    - If the context is insufficient to generate data, explicitly state that.
-
+    - Generate realistic synthetic medical data based on the context
+    - Do NOT copy any real patient data from the documents
+    - Create entirely new, plausible values
+    - If asked for CSV data, output ONLY the CSV format without explanations
+    - Keep responses focused and relevant to the question
     """
 
     # Create a template for formatting the input for the model
