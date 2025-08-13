@@ -108,13 +108,6 @@ def visualize_ecg_npy(
                 ax.set_yticklabels([])
                 ax.set_ylabel("")
 
-            # X-axis ticks/labels only on bottom row, in ms
-            if r == rows - 1:
-                ax.xaxis.set_major_formatter(FuncFormatter(ms_formatter))
-                ax.set_xlabel("Time (ms)")
-            else:
-                ax.set_xticklabels([])
-                ax.set_xlabel("")
 
     # Single figure-level y-axis unit label
     fig.text(0.02, 0.5, "mV", rotation=90, va='center', ha='center', fontsize=10)

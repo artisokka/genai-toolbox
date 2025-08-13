@@ -1,5 +1,5 @@
 import streamlit as st
-st.set_page_config(layout="wide")
+#st.set_page_config(layout="wide")
 
 import numpy as np
 import torch
@@ -53,10 +53,13 @@ tab1, tab2 = st.tabs(["📊 Advanced Tabular Data Generation", "📈 Synthetic E
 with tab1:
     st.header("Generate High-Quality Tabular Data")
     st.markdown("""
-    This tool uses a two-stage process for best results:
-    1.  **Blueprint Generation (RAG):** An LLM creates a small, context-aware seed dataset based on your documents.
-    2.  **Data Synthesis (SDV):** A statistical model learns from the blueprint to generate a large, high-fidelity dataset.
-    """)
+- **➡️ Retrieval-Augmented Generation (RAG):** Index your documents and use them as a knowledge base for tabular data generation.
+  - Model attempts to infer the schema of the data from the documents.
+- **➡️ Data Synthesis:** Generate a synthetic dataset from the RAG knowledge base and the user's specification.
+  - Specify the type of dataset by natural language, a schema, or a combination of both.
+  - Specify the number of rows to generate.
+  - Specify the number of ECGs to generate for each row.
+""")
 
     # --- Setup RAG Paths ---
     data_dir = os.path.join(script_dir, "rag", "Data")
@@ -117,46 +120,51 @@ with tab1:
 
     # Generate via LLM Schema
     st.subheader("Generate synthetic tabular data")
-    st.caption("Describe the dataset in natural language (e.g., 'diabetes biomarkers'). If left empty and a RAG index exists, the schema will be inferred from uploaded documents.")
+    st.markdown("""
+    - Describe the dataset in natural language (e.g., 'diabetes biomarkers') or list the columns you want to generate. 
+    - If left empty and a RAG index exists, the schema will be inferred from uploaded documents.
+    """)
     schema_prompt = st.text_area(
         "Describe the dataset you want (optional)",
         "",
         height=80,
     )
-    rows_schema = st.number_input("Rows to generate (schema sampler)", min_value=50, max_value=50000, value=1000)
-    if st.button("Generate via LLM Schema"):
-        with st.spinner("Calling LLM for schema and sampling locally..."):
+    rows_schema = st.number_input("Rows to generate", min_value=10, max_value=50000, value=100)
+    if st.button("Generate Tabular Data"):
+        with st.spinner("Calling LLM for schema and generating data..."):
             try:
                 def _produce_schema_text(desc: str):
-                    sys_instructions = (
-                        "You are an expert medical data scientist. "
-                        "Your output MUST be a single, valid, minified JSON object and nothing else. "
-                        "Do not use markdown fences like ```json. "
-                        "The JSON schema should be: "
+                    # Unified schema instruction; used for both RAG and direct LLM
+                    schema_instr = (
+                        "Produce ONLY a single, valid, minified JSON object representing a tabular data schema. "
+                        "NO extra text, NO markdown fences. "
+                        "Schema structure: "
                         '{"columns": {"column_name": {"type": "...", "details": {...}}}, "constraints": ["..."]}. '
-                        "Valid types are: 'int', 'float', 'category'. "
-                        "For 'category' type, details must include 'values' (a list of strings) and may include 'probs' (a list of probabilities). "
-                        "For numeric types ('int', 'float'), details must include a 'range' [min, max] and may include 'dist': 'truncated_normal' with 'mean' and 'sd'. "
-                        "Include sensible constraints, for example: '\"age\" > \"medication_count\" * 5'. "
-                        "Do not include any Personally Identifiable Information (PII)."
+                        "Valid types: 'int', 'float', 'category'. "
+                        "For 'category': include 'values' list, optional 'probs'. "
+                        "For numeric: include 'range' [min, max], optional 'dist': 'truncated_normal' with 'mean' and 'sd'. "
+                        "Include sensible constraints (e.g., '\"age\" > \"medication_count\" * 5'). "
+                        "Avoid any PII."
                     )
+                    # Build the request that will be passed either through RAG or directly
+                    spec_line = (" User specification: " + desc.strip()) if (desc and desc.strip()) else ""
+                    request_text = schema_instr + spec_line
+                    # Prefer RAG when available to ground in domain documents; also include the user's spec
+                    if rag_chain is not None:
+                        return get_answer(request_text, rag_chain)
+                    # Fallback to direct LLM when no RAG is available, still enforcing JSON-only output
                     if desc and desc.strip():
-                        model_name="llama3.2"
+                        model_name = "llama3.2"
                         llm = ChatOpenAI(
                             model=model_name,
                             openai_api_key=os.environ.get("OPENAI_API_KEY"),
                             openai_api_base=os.environ.get("OPENAI_BASE_URL"),
                         )
-                        prompt = sys_instructions + "\nUser request: " + desc.strip()
-                        return llm.invoke(prompt).content
-                    if rag_chain is not None:
-                        rag_req = (
-                            "Based on the uploaded documents, produce ONLY a minified JSON schema for a realistic synthetic tabular dataset "
-                            "capturing key variables in this domain. Follow this structure: "
-                            '{"columns":{"column_name":{"type": "...", "details": {...}}}, "constraints":["..."]}. '
-                            "Avoid PII. No prose, no markdown."
+                        sys_prefix = (
+                            "You are an expert medical data scientist. "
+                            "Follow the user's instructions exactly and output ONLY the JSON object with no extra text. "
                         )
-                        return get_answer(rag_req, rag_chain)
+                        return llm.invoke(sys_prefix + request_text).content
                     raise ValueError("No description provided and no RAG index available. Provide a description or build the RAG index.")
 
                 raw = _produce_schema_text(schema_prompt)
@@ -325,275 +333,65 @@ with tab1:
                                     df_loc = df_loc.loc[df_loc[col] <= mx]
                     return df_loc
 
-                df_gen = _sample_base(schema, int(rows_schema))
-                df_gen = _apply_copula(df_gen, schema)
-                df_gen = _enforce_constraints(df_gen, schema).reset_index(drop=True)
+                # Retry loop to meet requested row count after constraint filtering
+                target_rows = int(rows_schema)
+                max_attempts = 6
+                batch_size = max(target_rows, 100)
+                collected = []
+                attempts = 0
+                while sum(len(df) for df in collected) < target_rows and attempts < max_attempts:
+                    attempts += 1
+                    df_try = _sample_base(schema, batch_size)
+                    df_try = _apply_copula(df_try, schema)
+                    df_try = _enforce_constraints(df_try, schema).reset_index(drop=True)
+                    if not df_try.empty:
+                        collected.append(df_try)
+                    # adaptively increase sample size if we get too few after constraints
+                    if sum(len(df) for df in collected) < target_rows:
+                        batch_size = min(int(batch_size * 1.5), target_rows * 5)
+
+                if collected:
+                    df_gen = pd.concat(collected, ignore_index=True)
+                else:
+                    df_gen = pd.DataFrame()
+
+                if len(df_gen) == 0:
+                    raise ValueError("No rows could be generated after applying constraints.")
+
+                # Truncate to exact requested size
+                if len(df_gen) > target_rows:
+                    df_gen = df_gen.iloc[:target_rows].reset_index(drop=True)
 
                 st.session_state.final_synthetic_df = df_gen
                 st.success(f"Generated {len(df_gen)} rows from LLM-defined schema.")
-                st.dataframe(df_gen.head())
             except Exception as e:
                 st.error(f"Failed to generate via LLM schema: {e}")
 
-    # --- Step 2: Synthesize Data with SDV ---
-    if 'blueprint_df' in st.session_state:
-        st.subheader("Step 2: Generate Large Dataset with SDV")
-        st.write("Blueprint Data Preview:")
-        st.dataframe(st.session_state.blueprint_df.head())
-
-        num_rows_sdv = st.number_input("Number of final synthetic records to generate", min_value=100, max_value=20000, value=1000)
-
-        if st.button("Train Synthesizer and Generate Final Data"):
-            with st.spinner("Training SDV synthesizer... This may take several minutes."):
-                try:
-                    blueprint_df = st.session_state.blueprint_df.copy()
-                    
-                    # Show original data for debugging
-                    st.write("**Original Data Sample:**")
-                    st.dataframe(blueprint_df.head())
-                    
-                    # Clean the data: remove any problematic characters and ensure proper data types
-                    for col in blueprint_df.columns:
-                        # Clean all columns regardless of type
-                        blueprint_df[col] = blueprint_df[col].astype(str).str.strip()
-                        
-                        # Replace problematic values like '(pii)' with empty string - use multiple approaches
-                        blueprint_df[col] = blueprint_df[col].str.replace('(pii)', '', case=False)
-                        blueprint_df[col] = blueprint_df[col].str.replace('pii', '', case=False)
-                        blueprint_df[col] = blueprint_df[col].str.replace(r'\(pii\)', '', case=False, regex=True)
-                        blueprint_df[col] = blueprint_df[col].str.replace(r'pii', '', case=False, regex=True)
-                        
-                        # Also remove any values that contain 'pii' anywhere (case insensitive)
-                        blueprint_df[col] = blueprint_df[col].apply(lambda x: '' if 'pii' in str(x).lower() else x)
-                        
-                        # Clean up any extra whitespace
-                        blueprint_df[col] = blueprint_df[col].str.strip()
-                        
-                        # Remove any values that are just empty strings or whitespace
-                        blueprint_df[col] = blueprint_df[col].replace(['', 'nan', 'None'], np.nan)
-                    
-                    # Remove any completely empty rows
-                    blueprint_df = blueprint_df.dropna(how='all')
-                    
-                    # Remove rows where all values are empty strings
-                    blueprint_df = blueprint_df[~(blueprint_df == '').all(axis=1)]
-                    
-                    # Additional validation: check for any remaining problematic values BEFORE metadata detection
-                    st.write("**Pre-validation Check:**")
-                    for col_name in blueprint_df.columns:
-                        # Check for any remaining problematic values - more thorough check
-                        # First, convert to string and check for problematic patterns
-                        col_as_str = blueprint_df[col_name].astype(str)
-                        
-                        # Check for any remaining problematic values
-                        problematic_mask = col_as_str.str.contains('pii|\(pii\)', case=False, na=False)
-                        problematic_count = problematic_mask.sum()
-                        if problematic_count > 0:
-                            st.warning(f"Found {problematic_count} rows with problematic values in '{col_name}'. Removing them.")
-                            st.write(f"Problematic values found: {blueprint_df[problematic_mask][col_name].tolist()}")
-                            blueprint_df = blueprint_df[~problematic_mask]
-                        
-                        # Also check for any values that contain 'pii' anywhere in the string
-                        pii_anywhere_mask = col_as_str.str.lower().str.contains('pii', na=False)
-                        pii_anywhere_count = pii_anywhere_mask.sum()
-                        if pii_anywhere_count > 0:
-                            st.warning(f"Found {pii_anywhere_count} rows with 'pii' anywhere in '{col_name}'. Removing them.")
-                            st.write(f"Values with 'pii': {blueprint_df[pii_anywhere_mask][col_name].tolist()}")
-                            blueprint_df = blueprint_df[~pii_anywhere_mask]
-                        
-                        # Check for any values that are just empty strings, whitespace, or 'nan'
-                        empty_mask = col_as_str.str.strip().isin(['', 'nan', 'None', 'null'])
-                        empty_count = empty_mask.sum()
-                        if empty_count > 0:
-                            st.warning(f"Found {empty_count} rows with empty/invalid values in '{col_name}'. Removing them.")
-                            st.write(f"Empty values found: {blueprint_df[empty_mask][col_name].tolist()}")
-                            blueprint_df = blueprint_df[~empty_mask]
-                    
-                    if len(blueprint_df) == 0:
-                        st.error("No valid data remaining after cleaning. Please regenerate the blueprint.")
-                        st.stop()
-                    
-                    st.write(f"**Data Shape after cleaning:** {blueprint_df.shape}")
-                    st.write("**Cleaned Data Sample:**")
-                    st.dataframe(blueprint_df.head())
-                    
-                    # Show what values are in each column for debugging
-                    st.write("**Column Value Analysis:**")
-                    for col_name in blueprint_df.columns:
-                        unique_values = blueprint_df[col_name].value_counts().head(5)
-                        st.write(f"{col_name}: {list(unique_values.index)}")
-                    
-                    # Final check: ensure no problematic values remain anywhere
-                    st.write("**Final PII Check:**")
-                    for col_name in blueprint_df.columns:
-                        # Check for any values containing 'pii' (case insensitive)
-                        pii_check = blueprint_df[col_name].astype(str).str.lower().str.contains('pii', na=False)
-                        if pii_check.any():
-                            problematic_values = blueprint_df[pii_check][col_name].tolist()
-                            st.error(f"CRITICAL: Found PII values in '{col_name}': {problematic_values}")
-                            st.error("Removing these rows...")
-                            blueprint_df = blueprint_df[~pii_check]
-                    
-                    if len(blueprint_df) == 0:
-                        st.error("No valid data remaining after final PII check. Please regenerate the blueprint.")
-                        st.stop()
-                    
-                    st.write(f"**Final data shape after PII check:** {blueprint_df.shape}")
-                    
-                    # Final check: ensure no problematic values remain anywhere before metadata detection
-                    st.write("**Final Data Quality Check:**")
-                    for col_name in blueprint_df.columns:
-                        col_as_str = blueprint_df[col_name].astype(str)
-                        # Check for any values containing 'pii' (case insensitive)
-                        pii_check = col_as_str.str.lower().str.contains('pii', na=False)
-                        if pii_check.any():
-                            problematic_values = blueprint_df[pii_check][col_name].tolist()
-                            st.error(f"CRITICAL: Found PII values in '{col_name}': {problematic_values}")
-                            st.error("Removing these rows...")
-                            blueprint_df = blueprint_df[~pii_check]
-                    
-                    if len(blueprint_df) == 0:
-                        st.error("No valid data remaining after final quality check. Please regenerate the blueprint.")
-                        st.stop()
-                    
-                    st.write(f"**Final data shape after quality check:** {blueprint_df.shape}")
-                    
-                    # One more global PII scrub and categorical normalization before SDV
-                    # Drop any row where any cell still contains PII-like tokens
-                    pii_row_mask = blueprint_df.astype(str).apply(
-                        lambda s: s.str.contains(r"(?i)\bpii\b|\(\s*pii\s*\)", na=False)
-                    ).any(axis=1)
-                    if pii_row_mask.any():
-                        st.warning(f"Dropping {int(pii_row_mask.sum())} row(s) containing residual PII tokens.")
-                        blueprint_df = blueprint_df.loc[~pii_row_mask].copy()
-
-                    # Normalize gender to {M, F, Other} if present; drop invalids
-                    if 'gender' in blueprint_df.columns:
-                        # Pre-drop any gender strings that still carry PII tokens
-                        mask_gender_pii = blueprint_df['gender'].astype(str).str.contains(r"(?i)\bpii\b|\(\s*pii\s*\)", na=False)
-                        if mask_gender_pii.any():
-                            st.warning(f"Dropping {int(mask_gender_pii.sum())} row(s) with PII-like tokens in 'gender'.")
-                            blueprint_df = blueprint_df.loc[~mask_gender_pii].copy()
-                        def _norm_gender(val):
-                            s = str(val).strip().lower()
-                            if s in {"m", "male"}: return "M"
-                            if s in {"f", "female"}: return "F"
-                            if s in {"other", "o", "x", "u", "unknown", "na", "n/a"}: return "Other"
-                            return np.nan
-                        blueprint_df['gender'] = blueprint_df['gender'].map(_norm_gender)
-                        invalid_gender = blueprint_df['gender'].isna().sum()
-                        if invalid_gender:
-                            st.warning(f"Dropping {int(invalid_gender)} row(s) with invalid gender values.")
-                            blueprint_df = blueprint_df.dropna(subset=['gender'])
-                        # Enforce whitelist strictly
-                        allowed_gender = {"M", "F", "Other"}
-                        not_allowed = ~blueprint_df['gender'].isin(allowed_gender)
-                        if not_allowed.any():
-                            st.warning(f"Dropping {int(not_allowed.sum())} row(s) with non-whitelisted gender values.")
-                            blueprint_df = blueprint_df.loc[~not_allowed].copy()
-
-                    # Normalize numeric columns: strip non-numeric chars, coerce to float, drop NaNs and out-of-range values
-                    numeric_targets = {
-                        'age': (0, 120),
-                        'bmi': (10, 90),
-                        'systolic_bp': (60, 260),
-                        'diastolic_bp': (30, 200),
-                        'cholesterol': (50, 1000),
-                    }
-                    for col, (lo, hi) in numeric_targets.items():
-                        if col in blueprint_df.columns:
-                            # Remove any non-numeric characters
-                            blueprint_df[col] = blueprint_df[col].astype(str).str.replace(r"[^0-9\.-]", "", regex=True)
-                            # Convert to numeric
-                            blueprint_df[col] = pd.to_numeric(blueprint_df[col], errors='coerce')
-                            # Drop NaNs
-                            n_nans = blueprint_df[col].isna().sum()
-                            if n_nans:
-                                st.warning(f"Dropping {int(n_nans)} row(s) with invalid numeric in '{col}'.")
-                                blueprint_df = blueprint_df.dropna(subset=[col])
-                            # Clamp to plausible range and drop outliers
-                            out_of_range = (blueprint_df[col] < lo) | (blueprint_df[col] > hi)
-                            n_oob = int(out_of_range.sum())
-                            if n_oob:
-                                st.warning(f"Dropping {n_oob} row(s) out of range for '{col}' [{lo}, {hi}].")
-                                blueprint_df = blueprint_df.loc[~out_of_range]
-
-                    # Show final clean data
-                    st.write("**Final Clean Data Sample:**")
-                    st.dataframe(blueprint_df.head())
-                    
-                    metadata = SingleTableMetadata()
-                    metadata.detect_from_dataframe(data=blueprint_df)
-                    metadata.set_primary_key(None)
-
-                    # First, set all columns to not PII
-                    for column in metadata.columns:
-                        metadata.update_column(
-                            column_name=column,
-                            pii=False
-                        )
-                    
-                    # Force all columns to be either numerical or categorical (no ID columns)
-                    # Prefer explicit assignment for known columns
-                    for col_name in blueprint_df.columns:
-                        desired = None
-                        if col_name in numeric_targets:
-                            desired = 'numerical'
-                        elif col_name in ['gender', 'diagnosis']:
-                            desired = 'categorical'
-                        if desired:
-                            try:
-                                metadata.update_column(column_name=col_name, sdtype=desired)
-                            except Exception:
-                                pass
-                        else:
-                            current_sdtype = metadata.columns[col_name]['sdtype']
-                            if current_sdtype == 'id':
-                                metadata.update_column(column_name=col_name, sdtype='categorical')
-                            elif not pd.api.types.is_numeric_dtype(blueprint_df[col_name]):
-                                if current_sdtype not in ['categorical', 'text']:
-                                    metadata.update_column(column_name=col_name, sdtype='categorical')
-                    
-                    # Debug: Show metadata information
-                    st.write("**Metadata Configuration:**")
-                    for col_name, col_info in metadata.columns.items():
-                        st.write(f"- {col_name}: {col_info['sdtype']} (PII: {col_info.get('pii', False)})")
-                    
-                    st.write(f"**Final Data Shape:** {blueprint_df.shape}")
-                    
-                    synthesizer = CTGANSynthesizer(metadata)
-                    synthesizer.fit(blueprint_df)
-                    
-                    st.session_state.final_synthetic_df = synthesizer.sample(num_rows=num_rows_sdv)
-                    st.success("Final synthetic dataset generated!")
-                except Exception as e:
-                    st.error(f"An error occurred during SDV synthesis: {e}")
-
     # --- Display Final Results ---
     if 'final_synthetic_df' in st.session_state:
-        st.subheader("Final Generated Data")
+        st.subheader("Generated Data")
         final_df = st.session_state.final_synthetic_df
         st.dataframe(final_df)
         
         csv_final = final_df.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="Download Final Data as CSV",
+            label="Download as CSV",
             data=csv_final,
             file_name='final_synthetic_patient_data.csv',
             mime='text/csv',
         )
 
         st.markdown("---")
-        st.subheader("Generate ECGs Conditioned on This Tabular Data")
+        st.subheader("Generate ECGs for tabular dataset")
         st.markdown("Map rows to ECG label vectors and synthesize matching signals.")
 
         # Row selection
         selectable_indices = list(final_df.index)
         default_sel = selectable_indices[: min(5, len(selectable_indices))]
-        selected_rows = st.multiselect("Select row indices to condition on", selectable_indices, default=default_sel)
+        selected_rows = st.multiselect("Select rows to generate ECGs for", selectable_indices, default=default_sel)
+        generate_all_rows = st.checkbox("Generate for all rows", value=False)
         num_ecg_per_row = st.number_input("ECGs per selected row", min_value=1, max_value=10, value=1)
-        positive_score = st.slider("Label score for positive conditions", min_value=0.1, max_value=1.0, value=1.0, step=0.1)
-
+        
         # Load label name mapping if available
         raw_mapping = None
         for p in [
@@ -616,36 +414,20 @@ with tab1:
         default_diag_col = next((c for c in cat_cols if c.lower() == 'diagnosis'), (cat_cols[0] if cat_cols else None))
         diag_col = st.selectbox("Categorical column to map to ECG labels", options=[""] + cat_cols, index=(cat_cols.index(default_diag_col)+1) if default_diag_col else 0)
 
-        # Build a suggested mapping from unique values to label codes
+        # Build an automatic mapping from unique values to label codes (no manual input required)
         suggested = {}
         if diag_col:
             unique_vals = sorted([str(v) for v in final_df[diag_col].dropna().unique()])[:30]
             for v in unique_vals:
                 key = v.strip().upper().replace(" ", "_")
-                # naive suggestions
+                # Heuristic matches for common codes
                 for code in ["AMI","AFIB","LBBB","RBBB","NORM","NST_","STACH","SBRAD"]:
                     if code in key:
                         suggested[v] = code
                         break
+                # If the cleaned value exactly matches a known label name, use it
                 if v not in suggested and key in (idx_to_name or []):
                     suggested[v] = key
-        mapping_help = {
-            "Myocardial_Infarction": "AMI",
-            "Atrial Fibrillation": "AFIB",
-            "Normal": "NORM"
-        }
-        default_map = {**mapping_help, **suggested}
-        default_map_json = json.dumps(default_map, indent=2)
-        mapping_json = st.text_area("Value-to-ECG-label mapping (JSON)", value=default_map_json, height=180)
-
-        # Optional numeric threshold rules using pandas.eval expressions
-        st.caption("Optional: add rules like {'when': 'troponin > 0.4', 'set': ['AMI']} one per line (JSON list)")
-        rules_default = """
-[
-  {"when": "troponin > 0.4", "set": ["AMI"]}
-]
-""".strip()
-        rules_json = st.text_area("Conditional rules (JSON list)", value=rules_default, height=120)
 
         # Load ECG generation config
         try:
@@ -655,7 +437,8 @@ with tab1:
             ecg_cfg = None
             st.warning(f"Could not load ECG config: {e}")
 
-        if st.button("Generate Conditioned ECGs", disabled=(ecg_cfg is None or not selected_rows)):
+        effective_rows = selectable_indices if generate_all_rows else selected_rows
+        if st.button("Generate Conditioned ECGs", disabled=(ecg_cfg is None or (not generate_all_rows and not selected_rows))):
             try:
                 model_config = ecg_cfg.get('wavenet_config')
                 diffusion_config = ecg_cfg.get('diffusion_config')
@@ -671,54 +454,22 @@ with tab1:
                     st.error("Model config lacks 'label_embed_classes'.")
                     st.stop()
 
-                # Parse mapping and rules
-                value_to_label = {}
-                try:
-                    parsed = json.loads(mapping_json) if mapping_json.strip() else {}
-                    for k, v in parsed.items():
-                        if isinstance(v, str):
-                            value_to_label[str(k)] = [v]
-                        elif isinstance(v, list):
-                            value_to_label[str(k)] = [str(x) for x in v]
-                except Exception as e:
-                    st.error(f"Invalid mapping JSON: {e}")
-                    st.stop()
-
-                try:
-                    rule_list = json.loads(rules_json) if rules_json.strip() else []
-                    if not isinstance(rule_list, list):
-                        raise ValueError("Rules must be a JSON list")
-                except Exception as e:
-                    st.error(f"Invalid rules JSON: {e}")
-                    st.stop()
+                # Auto mapping derived from suggestions only
+                value_to_label = {str(k): [str(v)] for k, v in suggested.items()}
 
                 # Build label matrix
                 def labels_for_row(row: pd.Series) -> np.ndarray:
                     vec = np.zeros((num_classes,), dtype=np.float32)
-                    # categorical mapping
+                    # categorical mapping only (automatic suggestions)
                     if diag_col:
                         val = str(row.get(diag_col, ""))
                         for code in value_to_label.get(val, []):
                             if code in name_to_idx:
                                 vec[name_to_idx[code]] = positive_score
-                    # rule-based mapping
-                    env = {col: row[col] for col in final_df.columns}
-                    for rule in rule_list:
-                        try:
-                            expr = str(rule.get("when", "")).strip()
-                            to_set = rule.get("set", [])
-                            if expr:
-                                ok = pd.eval(expr, engine='python', local_dict=env)
-                                if bool(ok):
-                                    for code in to_set:
-                                        if code in name_to_idx:
-                                            vec[name_to_idx[code]] = positive_score
-                        except Exception:
-                            continue
                     return vec
 
                 per_row = []
-                for ridx in selected_rows:
+                for ridx in effective_rows:
                     row = final_df.loc[ridx]
                     vec = labels_for_row(row)
                     for _ in range(int(num_ecg_per_row)):
@@ -765,8 +516,8 @@ with tab2:
     diffusion_hyperparams = calc_diffusion_hyperparams(**diffusion_config)
 
     # --- UI for Generation Parameters ---
-    st.header("Generation Settings")
-    ckpt_iter = st.text_input("Checkpoint Iteration", value="max")
+    st.subheader("Generation Settings")
+    ckpt_iter = "max"
     num_samples = st.number_input("Number of Samples to Generate", min_value=1, max_value=1000, value=1)
     
     # --- Execute Generation ---
@@ -887,12 +638,7 @@ with tab2:
                 top_k=10,
             )
             st.pyplot(fig)
-            # Additionally list top labels in text form
-            if label_info:
-                top_items = sorted(label_info.items(), key=lambda kv: kv[1], reverse=True)[:10]
-                st.markdown("**Top labels**")
-                for name, score in top_items:
-                    st.write(f"{name}: {score:.3f}")
+        
         else:
             # Visualize all samples in the chosen run; disable per-sample controls
             st.info(f"Rendering all samples in `{run_choice}`")

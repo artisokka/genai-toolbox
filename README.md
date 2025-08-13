@@ -44,7 +44,14 @@ curl -L -o sssd/checkpoint/100000.pkl "https://figshare.com/s/81834b24a4711c2a5c
 5) Install Ollama and the local model for RAG
 ```bash
 # Install Ollama from https://ollama.com
+ollama serve
 ollama pull llama3.1
+```
+
+6) Insert your .env file in rag/
+```bash
+OPENAI_API_KEY=<your-token>
+OPENAI_BASE_URL=<your-base-url>
 ```
 
 ## Run the app
@@ -52,10 +59,15 @@ ollama pull llama3.1
 python -m streamlit run synthgen_app.py
 ```
 
+## RAG: tabular data generation
+- Index your documents to use as a knowledge base
+- Specify the columns to be generated or let the app infer the dataset structure from your documents
+- Optionally generate ECG:s for tabular data rows
+
 ## ECG generation
 - Config file: `sssd/config/config_SSSD_ECG.json`
   - `gen_config.output_directory`: where outputs are saved (default `generated_ecg/`)
-  - `gen_config.ckpt_path`: folder containing model checkpoint `.pkl` files (default `sssd_label_cond/`)
+  - `gen_config.ckpt_path`: folder containing model checkpoint `.pkl` files (default `sssd/checkpoint/`)
 - In the app under “Synthetic ECG Generation”:
   - Set checkpoint iteration (`max` uses the latest file in `ckpt_path`)
   - Choose number of samples and click “Generate”
@@ -63,23 +75,6 @@ python -m streamlit run synthgen_app.py
   - `generated_ecg/run_YYYYmmDD_HHMMSS/` containing `*_samples.npy` and matching `*_labels.npy`
 - Visualization:
   - The app lists available `run_*` folders and lets you preview batches and per‑sample plots
-
-Notes
-- If you don’t provide label files, the generator will sample random labels using the configured number of classes.
-- To use your dataset labels, place `ptbxl_test_labels.npy` under `<data_path>/labels/` and add `data_path` under `trainset_config` in the config.
-
-## RAG: Query your documents
-The app expects a FAISS index in `rag/DataIndex/`.
-
-Build it from your PDFs:
-```bash
-# 1) Convert PDFs → text
-python rag/pdf_to_text.py           # reads from rag/Data, writes rag/DataTxt
-
-# 2) Create FAISS index from text
-python rag/txt_to_index.py          # reads rag/DataTxt, writes rag/DataIndex
-```
-Then use the “Tabular Health Data” tab to ask questions. The app will load the index and query `llama3.1` via Ollama.
 
 ## Project structure
 ```bash
