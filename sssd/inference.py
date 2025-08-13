@@ -35,12 +35,17 @@ def generate(model_config,
              num_samples,
              ckpt_path,
              data_path,
-             ckpt_iter
+             ckpt_iter,
+             label_matrix=None
              ):
     
     
     """
-    Generates synthetic ECG data
+    Generates synthetic ECG data.
+
+    If label_matrix is provided, it will be used as the conditioning matrix directly
+    (shape: [num_samples, label_embed_classes]) and overrides num_samples and any
+    on-disk labels. Otherwise, labels will be loaded from disk (or randomly generated).
     """
     
     # --- 1. Setup Environment ---
@@ -101,21 +106,31 @@ def generate(model_config,
         raise Exception(f'Error loading model: {e}')
 
     # --- 3. Generate Data ---
-    try:
-        labels = np.load(os.path.join(data_path, 'labels/ptbxl_test_labels.npy'))
-        # Select only the requested number of samples
-        total = labels.shape[0]
-        if num_samples < total:
-            idx = np.random.choice(total, size=num_samples, replace=False)
-            labels = labels[idx]
-        else:
-            labels = labels[:num_samples]
-    except FileNotFoundError:
-        print("Warning: ptbxl_test_labels.npy not found. Generating random labels instead.")
+    if label_matrix is not None:
+        labels = np.asarray(label_matrix, dtype=np.float32)
+        if labels.ndim != 2:
+            raise ValueError(f"label_matrix must be 2D, got shape {labels.shape}")
         num_classes = model_config.get("label_embed_classes")
-        if not num_classes:
-            raise ValueError("Could not determine number of classes from model_config for random label generation.")
-        labels = np.random.rand(num_samples, num_classes)
+        if num_classes and labels.shape[1] != int(num_classes):
+            raise ValueError(f"label_matrix second dimension ({labels.shape[1]}) does not match model_config.label_embed_classes ({num_classes})")
+        num_samples = int(labels.shape[0])
+        print(f"Using provided label_matrix with shape {labels.shape}; overriding num_samples to {num_samples}")
+    else:
+        try:
+            labels = np.load(os.path.join(data_path, 'labels/ptbxl_test_labels.npy'))
+            # Select only the requested number of samples
+            total = labels.shape[0]
+            if num_samples < total:
+                idx = np.random.choice(total, size=num_samples, replace=False)
+                labels = labels[idx]
+            else:
+                labels = labels[:num_samples]
+        except FileNotFoundError:
+            print("Warning: ptbxl_test_labels.npy not found. Generating random labels instead.")
+            num_classes = model_config.get("label_embed_classes")
+            if not num_classes:
+                raise ValueError("Could not determine number of classes from model_config for random label generation.")
+            labels = np.random.rand(num_samples, num_classes)
 
     # Single batch honoring num_samples
     label_batches = [labels]

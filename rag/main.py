@@ -20,9 +20,7 @@ client = OpenAI(
 )
 
 # Load FAISS index
-def load_faiss_index(index_path, embedding_model):
-    # Load the FAISS index using the same embedding model
-    embeddings = HuggingFaceEmbeddings(model_name=embedding_model)
+def load_faiss_index(index_path, embeddings):
     vector_store = FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
     return vector_store
 
@@ -34,7 +32,12 @@ def create_rag_system(index_path, embedding_model='sentence-transformers/all-Min
         return None
 
     # Load the FAISS index
-    vector_store = load_faiss_index(index_path, embedding_model)
+    model_kwargs = {'device': 'cpu'}
+    embeddings = HuggingFaceEmbeddings(
+        model_name=embedding_model,
+        model_kwargs=model_kwargs
+    )
+    vector_store = load_faiss_index(index_path, embeddings)
 
     # Initialize LangChain OpenAI LLM
     llm = ChatOpenAI(
@@ -58,6 +61,8 @@ def create_rag_system(index_path, embedding_model='sentence-transformers/all-Min
     - Do NOT copy any real patient data from the documents
     - Create entirely new, plausible values
     - If asked for CSV data, output ONLY the CSV format without explanations
+    - NEVER include "(pii)" or "pii" in any output
+    - Use ONLY the exact column names specified in the request
     - Keep responses focused and relevant to the question
     """
 
@@ -79,8 +84,14 @@ def create_rag_system(index_path, embedding_model='sentence-transformers/all-Min
 
 # Function to run the RAG system with a user question
 def get_answer(question, qa_chain):
-    answer = qa_chain.run(question)
-    return answer
+    """
+    Runs the RAG system with a user question using the .invoke() method.
+    """
+    # The default input key for RetrievalQA is 'query'
+    input_data = {"query": question}
+    result = qa_chain.invoke(input_data)
+    # The answer is in the 'result' key of the output dictionary
+    return result['result']
 
 # Function to extract a table from the output text
 def extract_table(output_text):
@@ -114,13 +125,13 @@ def extract_table(output_text):
         return None
 
 if __name__ == "__main__":
-    # Path to the FAISS index directory
     index_path = "DataIndex"
-
-    # Initialize the RAG system
-    rag_system = create_rag_system(index_path)
-
-    # Get user input and generate the answer
+    model_kwargs = {'device': 'cpu'}
+    embeddings = HuggingFaceEmbeddings(
+        model_name='sentence-transformers/all-MiniLM-L6-v2',
+        model_kwargs=model_kwargs
+    )
+    rag_system = create_rag_system(index_path, embeddings)
     while True:
         user_question = input("Ask your question (or type 'exit' to quit): ")
         if user_question.lower() == "exit":
