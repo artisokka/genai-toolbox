@@ -160,13 +160,95 @@ with tab1:
                     raise ValueError("No description provided and no RAG index available. Provide a description or build the RAG index.")
 
                 raw = _produce_schema_text(schema_prompt)
-                m = re.search(r"```json\s*(.*?)\s*```", raw, re.DOTALL | re.IGNORECASE)
-                json_text = m.group(1) if m else raw.strip()
-                schema = json.loads(json_text)
+
+                def _extract_first_json_block(text: str) -> str:
+                    if not isinstance(text, str):
+                        return ""
+                    # Prefer fenced blocks first (```json ... ``` or ``` ... ```)
+                    blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)```", text, re.IGNORECASE)
+                    for b in blocks:
+                        candidate = b.strip()
+                        if candidate:
+                            return candidate
+                    # Fallback: find first balanced {...} object
+                    start = text.find('{')
+                    if start == -1:
+                        return text.strip()
+                    depth = 0
+                    for i in range(start, len(text)):
+                        ch = text[i]
+                        if ch == '{':
+                            depth += 1
+                        elif ch == '}':
+                            depth -= 1
+                            if depth == 0:
+                                return text[start:i+1].strip()
+                    return text.strip()
+
+                def _try_load_json(possible: str):
+                    # Try direct load
+                    try:
+                        return json.loads(possible)
+                    except Exception:
+                        pass
+                    # Try removing trailing commas before closing braces/brackets
+                    try:
+                        cleaned = re.sub(r",\s*([}\]])", r"\1", possible)
+                        return json.loads(cleaned)
+                    except Exception:
+                        return None
+
+                # Extract and parse JSON
+                json_text = _extract_first_json_block(raw)
+                schema = _try_load_json(json_text)
+                if schema is None:
+                    # As a last resort, try the entire raw
+                    schema = _try_load_json(raw.strip())
+                # Some models double-encode JSON, resulting in a JSON string containing JSON text
+                if isinstance(schema, str):
+                    schema_str_attempt = _try_load_json(schema)
+                    if schema_str_attempt is not None:
+                        schema = schema_str_attempt
+                if schema is None:
+                    preview = (raw or "").strip().replace('\n', ' ')[:300]
+                    raise ValueError(f"LLM did not return valid JSON. Preview: {preview}")
+
+                # Validate required shape; auto-convert common variants
+                if isinstance(schema, dict):
+                    cols = schema.get("columns")
+                    if isinstance(cols, list):
+                        converted = {}
+                        for idx, item in enumerate(cols):
+                            if isinstance(item, dict):
+                                name = item.get("name") or item.get("column") or f"col_{idx}"
+                                converted[name] = {k: v for k, v in item.items() if k not in {"name", "column"}}
+                            elif isinstance(item, str):
+                                converted[item] = {"type": "category", "values": []}
+                        schema["columns"] = converted
+                if not (isinstance(schema, dict) and isinstance(schema.get("columns"), dict)):
+                    preview = json.dumps(schema)[:200] if not isinstance(schema, str) else schema[:200]
+                    raise ValueError(f"Schema must be an object with a 'columns' object. Got: {preview}")
+
+                # Normalize possible nested 'details' under each column
+                if isinstance(schema, dict) and isinstance(schema.get("columns"), dict):
+                    normalized_cols = {}
+                    for col_name, spec in schema["columns"].items():
+                        if isinstance(spec, dict) and isinstance(spec.get("details"), dict):
+                            merged = {k: v for k, v in spec.items() if k != "details"}
+                            merged.update(spec["details"])
+                            normalized_cols[col_name] = merged
+                        else:
+                            normalized_cols[col_name] = spec
+                    schema["columns"] = normalized_cols
 
                 def _sample_base(_schema, n):
                     df_loc = pd.DataFrame(index=range(n))
                     for col, spec in _schema.get("columns", {}).items():
+                        # Support schemas where parameters are nested under 'details'
+                        if isinstance(spec, dict) and isinstance(spec.get("details"), dict):
+                            merged_spec = {k: v for k, v in spec.items() if k != "details"}
+                            merged_spec.update(spec["details"])
+                            spec = merged_spec
                         ctype = str(spec.get("type","category")).lower()
                         if ctype == "category":
                             vals = spec.get("values", [])
@@ -187,7 +269,12 @@ with tab1:
                 def _apply_copula(df_loc, _schema):
                     if GaussianMultivariate is None:
                         return df_loc
-                    num_cols = [c for c,s in _schema.get("columns", {}).items() if str(s.get("type","")) in ("int","float")]
+                    num_cols = []
+                    for c, s in _schema.get("columns", {}).items():
+                        if isinstance(s, dict) and isinstance(s.get("details"), dict):
+                            s = {**{k: v for k, v in s.items() if k != "details"}, **s["details"]}
+                        if str(s.get("type","")) in ("int","float"):
+                            num_cols.append(c)
                     if not num_cols:
                         return df_loc
                     model = GaussianMultivariate()
@@ -195,6 +282,8 @@ with tab1:
                         model.fit(df_loc[num_cols])
                         df_loc[num_cols] = model.sample(len(df_loc)).to_numpy()
                         for col, spec in _schema.get("columns", {}).items():
+                            if isinstance(spec, dict) and isinstance(spec.get("details"), dict):
+                                spec = {**{k: v for k, v in spec.items() if k != "details"}, **spec["details"]}
                             if str(spec.get("type","")) in ("int","float"):
                                 lo, hi = spec.get("range", [None, None])
                                 if lo is not None and hi is not None:
@@ -207,6 +296,20 @@ with tab1:
 
                 def _enforce_constraints(df_loc, _schema):
                     for cons in _schema.get("constraints", []):
+                        # Allow constraints to be dicts or strings; skip unknowns
+                        if isinstance(cons, str):
+                            # Optional: support simple expressions like "age >= 18"
+                            try:
+                                expr = cons.strip()
+                                if expr:
+                                    ok_mask = pd.eval(expr, engine='python', local_dict=df_loc.to_dict(orient='series'))
+                                    if isinstance(ok_mask, pd.Series):
+                                        df_loc = df_loc.loc[ok_mask]
+                            except Exception:
+                                pass
+                            continue
+                        if not isinstance(cons, dict):
+                            continue
                         ctype = str(cons.get("type",""))
                         if ctype == "inequality":
                             low, high = cons.get("low"), cons.get("high")
