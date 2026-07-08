@@ -115,7 +115,7 @@ python -m streamlit run synthgen_app.py
 }
 ```
 
-### Original implementation
+### Original SSSD-ECGimplementation
 - Paper: https://www.sciencedirect.com/science/article/pii/S0010482523005802
 - Code: https://github.com/AI4HealthUOL/SSSD-ECG
 

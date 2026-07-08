@@ -60,10 +60,7 @@ def create_rag_system(index_path, embedding_model='sentence-transformers/all-Min
     - Generate realistic synthetic medical data based on the context
     - Do NOT copy any real patient data from the documents
     - Create entirely new, plausible values
-    - If asked for CSV data, output ONLY the CSV format without explanations
-    - NEVER include "(pii)" or "pii" in any output
-    - Use ONLY the exact column names specified in the request
-    - Keep responses focused and relevant to the question
+    - Use ONLY and ALL the exact column names specified in the request
     """
 
     # Create a template for formatting the input for the model

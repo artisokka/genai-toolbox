@@ -141,10 +141,13 @@ with tab1:
                         "Schema structure: "
                         '{"columns": {"column_name": {"type": "...", "details": {...}}}, "constraints": ["..."]}. '
                         "Valid types: 'int', 'float', 'category'. "
+                        "Values can't be negative."
+                        "Use european metrics such as mmol/L for blood sugar, cm for height, kg for weight, etc."
                         "For 'category': include 'values' list, optional 'probs'. "
                         "For numeric: include 'range' [min, max], optional 'dist': 'truncated_normal' with 'mean' and 'sd'. "
                         "Include sensible constraints (e.g., '\"age\" > \"medication_count\" * 5'). "
                         "Avoid any PII."
+                        "Always include \"diagnosis\" as the last column with clinical ECG diagnoses, normal sinus rhythm being the most common."
                     )
                     # Build the request that will be passed either through RAG or directly
                     spec_line = (" User specification: " + desc.strip()) if (desc and desc.strip()) else ""
@@ -248,6 +251,10 @@ with tab1:
                         else:
                             normalized_cols[col_name] = spec
                     schema["columns"] = normalized_cols
+
+                 # Print the schema to console for debugging
+                print("Generated JSON Schema:")
+                print(json.dumps(schema, indent=2))
 
                 def _sample_base(_schema, n):
                     df_loc = pd.DataFrame(index=range(n))
