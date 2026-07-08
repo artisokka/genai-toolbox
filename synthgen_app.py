@@ -25,6 +25,7 @@ except Exception:
 from csv_input.csv_synthetic_generator import (
     infer_schema_from_dataframe,
     generate_synthetic_from_real,
+    preprocess_real_dataset,
 )
 
 # --- Import RAG components ---
@@ -70,7 +71,7 @@ with tab1:
     - statistical relationships between variables
     - Generate a synthetic dataset that preserves the structure of the original data while containing no real patient records.
 
-    **➡️ Knowledge-Base Generation (RAG)**
+    **➡️ Knowledge-Based Generation (RAG)**
     - Upload documents and build a knowledge base.
     - The model infers a dataset schema from the indexed literature and generates synthetic tabular data based on the available information.
     - Useful when structured patient data is not available.
@@ -82,16 +83,21 @@ with tab1:
     - Download the generated synthetic dataset for analysis or model development.
 """)
 
+    st.info(
+        "For synthetic-data validation studies, Patient Dataset Generation "
+        "is the recommended mode."
+    )
+
 
     generation_mode = st.radio(
         "Generation mode",
         [
-            "Real Dataset (CSV)",
-            "Literature / RAG"
+            "Patient Dataset Generation (CSV)",
+            "Knowledge-based generation (RAG)"
         ]
     )
 
-    if generation_mode == "Literature / RAG":
+    if generation_mode == "Knowledge-based generation (RAG)":
 
         # --- Setup RAG Paths ---
         data_dir = os.path.join(script_dir, "rag", "Data")
@@ -531,7 +537,15 @@ with tab1:
                 except Exception as e:
                     st.error(f"Failed to generate conditioned ECGs: {e}")
     
-    elif generation_mode == "Real Dataset (CSV)":
+    elif generation_mode == "Patient Dataset Generation (CSV)":
+
+        st.markdown("""
+        ### Validation Workflow
+        1. Upload a real cohort (CSV).
+        2. Generate a synthetic version of the cohort.
+        3. Compare descriptive statistics and variable relationships.
+        4. Use the synthetic data for downstream machine learning experiments.
+        """)
 
         uploaded_csv = st.file_uploader(
             "Upload patient dataset",
@@ -540,9 +554,11 @@ with tab1:
 
         if uploaded_csv is not None:
             real_df = pd.read_csv(uploaded_csv)
+            real_df, report = preprocess_real_dataset(real_df)
 
-            st.subheader("Dataset Preview")
-            st.dataframe(real_df.head())
+            st.subheader("Dataset Quality Report")
+            st.json(report)
+            st.write(real_df.dtypes)
 
             rows_to_generate = st.number_input(
                 "Rows to generate",
@@ -565,6 +581,8 @@ with tab1:
 
                 with st.expander("Inferred Schema"):
                     st.json(schema)
+                st.subheader("Generated data")
+                st.write(synthetic_df.head())
 
 
 # --- ECG Generation Tab ---
