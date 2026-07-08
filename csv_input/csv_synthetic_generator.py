@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from copulas.multivariate import GaussianMultivariate
 
+
+
 def preprocess_real_dataset(df: pd.DataFrame):
     """
     Clean a real-world clinical dataset before synthetic generation.
@@ -58,13 +60,14 @@ def preprocess_real_dataset(df: pd.DataFrame):
     report["dropped_columns"] = cols_to_drop
 
     # --------------------------------------------------
-    # 2. Convert booleans to integers
+    # 2. Convert booleans and common binary encodings
     # --------------------------------------------------
 
     bool_cols = df.select_dtypes(include=["bool"]).columns
 
     for col in bool_cols:
         df[col] = df[col].astype(int)
+    
 
     # --------------------------------------------------
     # 3. Convert date columns to numeric
@@ -143,18 +146,76 @@ def preprocess_real_dataset(df: pd.DataFrame):
 
 
 def infer_schema_from_dataframe(df: pd.DataFrame):
+
     schema = {"columns": {}, "constraints": []}
 
     for col in df.columns:
+
         s = df[col].dropna()
 
+        if len(s) == 0:
+            continue
+
         if pd.api.types.is_numeric_dtype(s):
+
+            unique_values = set(s.unique())
+
+            # -----------------------------------------
+            # Binary variables (0/1)
+            # -----------------------------------------
+
+            if unique_values.issubset({0, 1}):
+
+                schema["columns"][col] = {
+                    "type": "binary",
+                    "prob": float(s.mean())
+                }
+
+                continue
+
+            # -----------------------------------------
+            # Low-cardinality integers -> category
+            # -----------------------------------------
+
+            if (
+                pd.api.types.is_integer_dtype(s)
+                and len(unique_values) <= 10
+            ):
+
+                values = sorted(list(unique_values))
+
+                probs = (
+                    s.value_counts(normalize=True)
+                    .reindex(values)
+                    .fillna(0)
+                    .tolist()
+                )
+
+                schema["columns"][col] = {
+                    "type": "category",
+                    "values": values,
+                    "probs": probs,
+                }
+
+                continue
+
+            # -----------------------------------------
+            # Integer
+            # -----------------------------------------
+
             if pd.api.types.is_integer_dtype(s):
+
                 schema["columns"][col] = {
                     "type": "int",
                     "range": [int(s.min()), int(s.max())],
                 }
+
+            # -----------------------------------------
+            # Float
+            # -----------------------------------------
+
             else:
+
                 schema["columns"][col] = {
                     "type": "float",
                     "range": [float(s.min()), float(s.max())],
@@ -162,8 +223,11 @@ def infer_schema_from_dataframe(df: pd.DataFrame):
                     "mean": float(s.mean()),
                     "sd": float(s.std()) if float(s.std()) > 0 else 1.0,
                 }
+
         else:
+
             values = list(s.astype(str).unique())
+
             probs = (
                 s.astype(str)
                 .value_counts(normalize=True)
@@ -181,7 +245,6 @@ def infer_schema_from_dataframe(df: pd.DataFrame):
     return schema
 
 
-
 def generate_synthetic_from_real(real_df: pd.DataFrame, n_rows=None):
     if n_rows is None:
         n_rows = len(real_df)
@@ -191,7 +254,16 @@ def generate_synthetic_from_real(real_df: pd.DataFrame, n_rows=None):
     synthetic = pd.DataFrame(index=range(n_rows))
 
     for col, spec in schema["columns"].items():
-        if spec["type"] == "category":
+        
+        if spec["type"] == "binary":
+            prob = spec.get("prob", 0.5)
+            synthetic[col] = np.random.binomial(
+                1,
+                prob,
+                size=n_rows
+            )
+
+        elif spec["type"] == "category":
             synthetic[col] = pd.Series(
                 np.random.choice(
                     spec["values"],
@@ -217,18 +289,24 @@ def generate_synthetic_from_real(real_df: pd.DataFrame, n_rows=None):
             vals = np.clip(vals, spec["range"][0], spec["range"][1])
             synthetic[col] = vals
 
-    numeric_cols = [
-        c for c in real_df.columns
-        if pd.api.types.is_numeric_dtype(real_df[c])
+    
+    binary_cols = [
+        c for c, spec in schema["columns"].items()
+        if spec["type"] == "binary"
     ]
 
-    if len(numeric_cols) > 1:
+    copula_cols = [
+        c for c, spec in schema["columns"].items()
+        if spec["type"] in ["int", "float"]
+    ]
+
+    if len(copula_cols) > 1:
         copula = GaussianMultivariate()
-        copula.fit(real_df[numeric_cols])
+        copula.fit(real_df[copula_cols])
 
         sampled_numeric = copula.sample(n_rows)
 
-        for col in numeric_cols:
+        for col in copula_cols:
             synthetic[col] = sampled_numeric[col].values
 
             spec = schema["columns"][col]
