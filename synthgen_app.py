@@ -86,8 +86,8 @@ with tab1:
     generation_mode = st.radio(
         "Generation mode",
         [
-            "Literature / RAG",
-            "Real Dataset (CSV)"
+            "Real Dataset (CSV)",
+            "Literature / RAG"
         ]
     )
 
