@@ -23,6 +23,7 @@ except Exception:
 
 # --- Import CSV generator components ---
 from csv_input.csv_synthetic_generator import (
+    compare_datasets,
     infer_schema_from_dataframe,
     generate_synthetic_from_real,
     preprocess_real_dataset,
@@ -565,6 +566,14 @@ with tab1:
                 min_value=10,
                 value=len(real_df)
             )
+            target_col = st.selectbox(
+                "Optional target variable for subgroup analysis",
+                options=["None"] + real_df.columns.tolist()
+            )
+            
+            if target_col == "None":
+                target_col = None
+
 
             if st.button("Generate Synthetic Dataset"):
 
@@ -583,6 +592,13 @@ with tab1:
                     st.json(schema)
                 st.subheader("Generated data")
                 st.write(synthetic_df.head())
+
+                st.subheader("Comparing real dataset to synthetic")
+                compare_datasets(
+                    real_df,
+                    synthetic_df,
+                    target_col=target_col
+                )
 
 
 # --- ECG Generation Tab ---

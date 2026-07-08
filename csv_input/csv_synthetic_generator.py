@@ -4,6 +4,252 @@ import numpy as np
 from copulas.multivariate import GaussianMultivariate
 
 
+def compare_datasets(real_df, synthetic_df, target_col=None):
+    """
+    Compare real and synthetic datasets.
+
+    Parameters
+    ----------
+    real_df : pd.DataFrame
+    synthetic_df : pd.DataFrame
+    target_col : str, optional
+        Binary target column (e.g. 'stable_unstable')
+    """
+
+    print("\n" + "=" * 80)
+    print("DATASET OVERVIEW")
+    print("=" * 80)
+
+    print(f"Real dataset:      {real_df.shape}")
+    print(f"Synthetic dataset: {synthetic_df.shape}")
+
+    # ====================================================
+    # NUMERIC VARIABLES
+    # ====================================================
+
+    numeric_cols = real_df.select_dtypes(
+        include=np.number
+    ).columns.intersection(synthetic_df.columns)
+
+    print("\n" + "=" * 80)
+    print("NUMERIC VARIABLES")
+    print("=" * 80)
+
+    comparison_rows = []
+
+    for col in numeric_cols:
+
+        comparison_rows.append({
+            "Variable": col,
+
+            "Real Mean":
+                round(real_df[col].mean(), 3),
+
+            "Synth Mean":
+                round(synthetic_df[col].mean(), 3),
+
+            "Mean Diff":
+                round(
+                    synthetic_df[col].mean()
+                    - real_df[col].mean(),
+                    3
+                ),
+
+            "Real Std":
+                round(real_df[col].std(), 3),
+
+            "Synth Std":
+                round(synthetic_df[col].std(), 3),
+
+            "Real Min":
+                round(real_df[col].min(), 3),
+
+            "Synth Min":
+                round(synthetic_df[col].min(), 3),
+
+            "Real Max":
+                round(real_df[col].max(), 3),
+
+            "Synth Max":
+                round(synthetic_df[col].max(), 3),
+        })
+
+    numeric_summary = pd.DataFrame(comparison_rows)
+
+    print(numeric_summary)
+
+    # ====================================================
+    # CATEGORICAL VARIABLES
+    # ====================================================
+
+    categorical_cols = [
+        c for c in real_df.columns
+        if c not in numeric_cols
+        and c in synthetic_df.columns
+    ]
+
+    print("\n" + "=" * 80)
+    print("CATEGORICAL VARIABLES")
+    print("=" * 80)
+
+    for col in categorical_cols:
+
+        print(f"\n--- {col} ---")
+
+        real_freq = (
+            real_df[col]
+            .value_counts(normalize=True)
+            .sort_index()
+        )
+
+        synth_freq = (
+            synthetic_df[col]
+            .value_counts(normalize=True)
+            .sort_index()
+        )
+
+        comparison = pd.concat(
+            [real_freq, synth_freq],
+            axis=1
+        )
+
+        comparison.columns = [
+            "Real %",
+            "Synthetic %"
+        ]
+
+        comparison = comparison.fillna(0)
+
+        print(comparison.round(3))
+
+    # ====================================================
+    # BINARY VARIABLES
+    # ====================================================
+
+    binary_cols = []
+
+    for col in numeric_cols:
+
+        vals = set(real_df[col].dropna().unique())
+
+        if vals.issubset({0, 1}):
+            binary_cols.append(col)
+
+    if binary_cols:
+
+        print("\n" + "=" * 80)
+        print("BINARY VARIABLES")
+        print("=" * 80)
+
+        rows = []
+
+        for col in binary_cols:
+
+            rows.append({
+                "Variable": col,
+                "Real Positive Rate":
+                    round(real_df[col].mean(), 3),
+                "Synthetic Positive Rate":
+                    round(synthetic_df[col].mean(), 3),
+            })
+
+        print(pd.DataFrame(rows))
+
+    # ====================================================
+    # CORRELATIONS
+    # ====================================================
+
+    if len(numeric_cols) > 1:
+
+        print("\n" + "=" * 80)
+        print("CORRELATION PRESERVATION")
+        print("=" * 80)
+
+        corr_real = real_df[numeric_cols].corr()
+        corr_synth = synthetic_df[numeric_cols].corr()
+
+        diff = (corr_synth - corr_real).abs()
+
+        avg_corr_error = diff.values.mean()
+
+        print(
+            f"Average absolute correlation difference: "
+            f"{avg_corr_error:.4f}"
+        )
+
+        print("\nLargest differences:")
+
+        diff_long = (
+            diff.stack()
+            .reset_index()
+        )
+
+        diff_long.columns = [
+            "Var1",
+            "Var2",
+            "Difference"
+        ]
+
+        diff_long = diff_long[
+            diff_long["Var1"] != diff_long["Var2"]
+        ]
+
+        print(
+            diff_long
+            .sort_values(
+                "Difference",
+                ascending=False
+            )
+            .head(10)
+        )
+
+    # ====================================================
+    # TARGET STRATIFICATION
+    # ====================================================
+
+    if target_col and target_col in real_df.columns:
+
+        print("\n" + "=" * 80)
+        print(f"STRATIFIED ANALYSIS: {target_col}")
+        print("=" * 80)
+
+        numeric_for_strat = [
+            c for c in numeric_cols
+            if c != target_col
+        ]
+
+        for col in numeric_for_strat:
+
+            print(f"\n--- {col} ---")
+
+            real_grouped = (
+                real_df
+                .groupby(target_col)[col]
+                .mean()
+            )
+
+            synth_grouped = (
+                synthetic_df
+                .groupby(target_col)[col]
+                .mean()
+            )
+
+            comparison = pd.concat(
+                [real_grouped, synth_grouped],
+                axis=1
+            )
+
+            comparison.columns = [
+                "Real Mean",
+                "Synthetic Mean"
+            ]
+
+            print(comparison.round(3))
+
+    print("\n" + "=" * 80)
+    print("COMPARISON COMPLETE")
+    print("=" * 80)
+
 
 def preprocess_real_dataset(df: pd.DataFrame):
     """
