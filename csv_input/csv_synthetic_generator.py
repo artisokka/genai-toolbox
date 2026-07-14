@@ -246,6 +246,15 @@ def compare_datasets(real_df, synthetic_df, target_col=None):
 
             print(comparison.round(3))
 
+    real_df.groupby("Rupture")["PHASE"].mean()
+    synthetic_df.groupby("Rupture")["PHASE"].mean()
+
+    real_df.groupby("Rupture")["ELAPSS"].mean()
+    synthetic_df.groupby("Rupture")["ELAPSS"].mean()
+
+    real_df["Rupture"].mean()
+    synthetic_df["Rupture"].mean()
+
     print("\n" + "=" * 80)
     print("COMPARISON COMPLETE")
     print("=" * 80)
