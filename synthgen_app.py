@@ -14,6 +14,7 @@ from sdv.single_table import CTGANSynthesizer
 from sdv.metadata import SingleTableMetadata
 from io import StringIO
 from app_utils import _build_index_to_name, _humanize_diag
+from datetime import datetime
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI
 try:
@@ -582,10 +583,30 @@ with tab1:
                     n_rows=rows_to_generate
                 )
 
+                output_dir = "generated_tabular"
+
+                os.makedirs(output_dir, exist_ok=True)
+
+                timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M")
+
+                output_path = os.path.join(
+                    output_dir,
+                    f"SYNTH_{timestamp}.csv"
+                )
+
+                synthetic_df.to_csv(
+                    output_path,
+                    index=False
+                )
+
                 st.session_state.final_synthetic_df = synthetic_df
 
                 st.success(
                     f"Generated {len(synthetic_df)} synthetic rows."
+                )
+
+                st.info(
+                    f"Saved to: {output_path}"
                 )
 
                 with st.expander("Inferred Schema"):
