@@ -246,14 +246,14 @@ def compare_datasets(real_df, synthetic_df, target_col=None):
 
             print(comparison.round(3))
 
-    real_df.groupby("Rupture")["PHASE"].mean()
-    synthetic_df.groupby("Rupture")["PHASE"].mean()
+    #real_df.groupby("Rupture")["PHASE"].mean()
+    #synthetic_df.groupby("Rupture")["PHASE"].mean()
 
-    real_df.groupby("Rupture")["ELAPSS"].mean()
-    synthetic_df.groupby("Rupture")["ELAPSS"].mean()
+    #real_df.groupby("Rupture")["ELAPSS"].mean()
+    #synthetic_df.groupby("Rupture")["ELAPSS"].mean()
 
-    real_df["Rupture"].mean()
-    synthetic_df["Rupture"].mean()
+    #real_df["Rupture"].mean()
+    #synthetic_df["Rupture"].mean()
 
     print("\n" + "=" * 80)
     print("COMPARISON COMPLETE")
@@ -384,7 +384,27 @@ def preprocess_real_dataset(df: pd.DataFrame):
             df[col] = df[col].fillna(fill_value)
 
     # --------------------------------------------------
-    # 5. Remove columns that are entirely missing
+    # 5. Remove constant columns
+    # --------------------------------------------------
+
+    constant_cols = []
+
+    for col in df.columns:
+
+        # count unique non-null values
+        unique_values = df[col].nunique(dropna=True)
+
+        if unique_values <= 1:
+            constant_cols.append(col)
+
+    if constant_cols:
+        df = df.drop(columns=constant_cols)
+
+    report["constant_columns_removed"] = constant_cols
+    report["dropped_columns"].extend(constant_cols)
+
+    # --------------------------------------------------
+    # 6. Remove columns that are entirely missing
     # --------------------------------------------------
 
     empty_cols = df.columns[df.isna().all()].tolist()
@@ -396,6 +416,8 @@ def preprocess_real_dataset(df: pd.DataFrame):
         report["dropped_columns"].extend(empty_cols)
 
     report["missing_values_after"] = df.isna().sum().to_dict()
+
+
 
     return df, report
 
