@@ -554,13 +554,23 @@ with tab1:
             type=["csv"]
         )
 
+        synth_method = st.radio(
+            "Synthetic data generation method",
+            [
+                "CTGAN",
+                "Schema + Copula"
+            ]
+        )
+
         if uploaded_csv is not None:
             real_df = pd.read_csv(uploaded_csv)
             real_df, report = preprocess_real_dataset(real_df)
 
             st.subheader("Dataset Quality Report")
             st.json(report)
-            st.write(real_df.dtypes)
+
+            st.subheader("Dataset Preview")
+            st.dataframe(real_df.head())
 
             rows_to_generate = st.number_input(
                 "Rows to generate",
@@ -577,49 +587,87 @@ with tab1:
 
 
             if st.button("Generate Synthetic Dataset"):
+                try:
 
-                synthetic_df, schema = generate_synthetic_from_real(
-                    real_df,
-                    n_rows=rows_to_generate
-                )
+                    # Method 1: CTGAN
 
-                output_dir = "generated_tabular"
+                    if synth_method == "CTGAN":
 
-                os.makedirs(output_dir, exist_ok=True)
+                        with st.spinner (
+                            "Training CTGAN and generating synthetic data..."
+                        ):
+                            metadata = SingleTableMetadata()
+                            metadata.detect_from_dataframe(
+                                data = real_df
+                            )
+                            synthesizer = CTGANSynthesizer(
+                                metadata = metadata,
+                                epochs = 300
+                            )
 
-                timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M")
+                            synthesizer.fit(real_df)
 
-                output_path = os.path.join(
-                    output_dir,
-                    f"SYNTH_{timestamp}.csv"
-                )
+                            synthetic_df = synthesizer.sample(
+                                num_rows = rows_to_generate
+                            )
 
-                synthetic_df.to_csv(
-                    output_path,
-                    index=False
-                )
+                            schema = {
+                                "generator": "CTGAN",
+                                "rows_generated": rows_to_generate
+                            }
 
-                st.session_state.final_synthetic_df = synthetic_df
+                    # Method 2: Schema + Copula
+                    elif synth_method == "Schema + Copula":
 
-                st.success(
-                    f"Generated {len(synthetic_df)} synthetic rows."
-                )
+                        synthetic_df, schema = generate_synthetic_from_real(
+                            real_df,
+                            n_rows=rows_to_generate
+                        )
+                    
+                    # Saving output
 
-                st.info(
-                    f"Saved to: {output_path}"
-                )
+                    output_dir = "generated_tabular"
 
-                with st.expander("Inferred Schema"):
-                    st.json(schema)
-                st.subheader("Generated data")
-                st.write(synthetic_df.head())
+                    os.makedirs(output_dir, exist_ok=True)
 
-                st.subheader("Comparing real dataset to synthetic")
-                compare_datasets(
-                    real_df,
-                    synthetic_df,
-                    target_col=target_col
-                )
+                    timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M")
+
+                    output_path = os.path.join(
+                        output_dir,
+                        f"SYNTH_{timestamp}.csv"
+                    )
+
+                    synthetic_df.to_csv(
+                        output_path,
+                        index=False
+                    )
+
+                    st.session_state.final_synthetic_df = synthetic_df
+
+                    st.success(
+                        f"Generated {len(synthetic_df)} synthetic rows."
+                    )
+
+                    st.info(
+                        f"Saved to: {output_path}"
+                    )
+
+                    with st.expander("Inferred Schema"):
+                        st.json(schema)
+
+                    st.subheader("Generated data")
+                    st.write(synthetic_df.head())
+
+                    st.subheader("Comparing real dataset to synthetic")
+                    compare_datasets(
+                        real_df,
+                        synthetic_df,
+                        target_col=target_col
+                    )
+                except Exception as e:
+                    st.error(
+                        f"Generation failed: {str(e)}"
+                    )
 
 
 # --- ECG Generation Tab ---
