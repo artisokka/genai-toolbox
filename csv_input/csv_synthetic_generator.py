@@ -1,10 +1,11 @@
 
 import pandas as pd
 import numpy as np
+from pathlib import Path
 from copulas.multivariate import GaussianMultivariate
 
 
-def compare_datasets(real_df, synthetic_df, target_col=None):
+def compare_datasets(real_df, synthetic_df, target_col=None, output_dir=None, run_name=None):
     """
     Compare real and synthetic datasets.
 
@@ -92,6 +93,8 @@ def compare_datasets(real_df, synthetic_df, target_col=None):
     print("CATEGORICAL VARIABLES")
     print("=" * 80)
 
+    categorical_results = []
+
     for col in categorical_cols:
 
         print(f"\n--- {col} ---")
@@ -122,6 +125,17 @@ def compare_datasets(real_df, synthetic_df, target_col=None):
 
         print(comparison.round(3))
 
+        for category, row in comparison.iterrows():
+
+            categorical_results.append({
+                "Variable": col,
+                "Category": category,
+                "Real %": row["Real %"],
+                "Synthetic %": row["Synthetic %"]
+            })
+
+    categorical_summary = pd.DataFrame(categorical_results)
+
     # ====================================================
     # BINARY VARIABLES
     # ====================================================
@@ -141,11 +155,11 @@ def compare_datasets(real_df, synthetic_df, target_col=None):
         print("BINARY VARIABLES")
         print("=" * 80)
 
-        rows = []
+        binary_rows = []
 
         for col in binary_cols:
 
-            rows.append({
+            binary_rows.append({
                 "Variable": col,
                 "Real Positive Rate":
                     round(real_df[col].mean(), 3),
@@ -153,7 +167,8 @@ def compare_datasets(real_df, synthetic_df, target_col=None):
                     round(synthetic_df[col].mean(), 3),
             })
 
-        print(pd.DataFrame(rows))
+        binary_summary = pd.DataFrame(binary_rows)
+        print(binary_summary)
 
     # ====================================================
     # CORRELATIONS
@@ -189,6 +204,13 @@ def compare_datasets(real_df, synthetic_df, target_col=None):
             "Var2",
             "Difference"
         ]
+
+        correlation_summary = (
+            diff_long
+            .sort_values("Difference", ascending=False)
+        )
+
+        top_corr_errors = correlation_summary.head(25)
 
         diff_long = diff_long[
             diff_long["Var1"] != diff_long["Var2"]
@@ -259,6 +281,109 @@ def compare_datasets(real_df, synthetic_df, target_col=None):
     print("COMPARISON COMPLETE")
     print("=" * 80)
 
+    overview_df = pd.DataFrame([{
+        "Real Rows": len(real_df),
+        "Synthetic Rows": len(synthetic_df),
+        "Real Columns": real_df.shape[1],
+        "Synthetic Columns": synthetic_df.shape[1],
+        "Average Correlation Difference":
+            round(avg_corr_error, 4)
+            if len(numeric_cols) > 1
+            else np.nan
+    }])
+
+    return {
+        "overview": overview_df,
+        "numeric": numeric_summary,
+        "binary": binary_summary,
+        "categorical": categorical_summary,
+        "correlations": top_corr_errors,
+        "avg_corr_error": avg_corr_error
+    }
+
+# Save results into csv -> excel
+
+def save_comparison_results(
+    results,
+    output_dir,
+    run_name
+):
+    """
+    Save compare_datasets() results
+    to CSV and Excel.
+    """
+
+    save_dir = Path(output_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    results["overview"].to_csv(
+        save_dir / f"{run_name}_overview.csv",
+        index=False
+    )
+
+    results["numeric"].to_csv(
+        save_dir / f"{run_name}_numeric.csv",
+        index=False
+    )
+
+    results["binary"].to_csv(
+        save_dir / f"{run_name}_binary.csv",
+        index=False
+    )
+
+    results["categorical"].to_csv(
+        save_dir / f"{run_name}_categorical.csv",
+        index=False
+    )
+
+    results["correlations"].to_csv(
+        save_dir / f"{run_name}_correlations.csv",
+        index=False
+    )
+
+    excel_file = (
+        save_dir /
+        f"{run_name}_evaluation.xlsx"
+    )
+
+    with pd.ExcelWriter(
+        excel_file,
+        engine="openpyxl"
+    ) as writer:
+
+        results["overview"].to_excel(
+            writer,
+            sheet_name="Overview",
+            index=False
+        )
+
+        results["numeric"].to_excel(
+            writer,
+            sheet_name="Numeric",
+            index=False
+        )
+
+        results["binary"].to_excel(
+            writer,
+            sheet_name="Binary",
+            index=False
+        )
+
+        results["categorical"].to_excel(
+            writer,
+            sheet_name="Categorical",
+            index=False
+        )
+
+        results["correlations"].to_excel(
+            writer,
+            sheet_name="Correlations",
+            index=False
+        )
+
+    print(
+        f"Results saved to {excel_file}"
+    )
 
 def preprocess_real_dataset(df: pd.DataFrame):
     """

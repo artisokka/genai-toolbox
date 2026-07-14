@@ -25,6 +25,7 @@ except Exception:
 # --- Import CSV generator components ---
 from csv_input.csv_synthetic_generator import (
     compare_datasets,
+    save_comparison_results,
     infer_schema_from_dataframe,
     generate_synthetic_from_real,
     preprocess_real_dataset,
@@ -577,9 +578,15 @@ with tab1:
                 min_value=10,
                 value=len(real_df)
             )
+
             target_col = st.selectbox(
                 "Optional target variable for subgroup analysis",
                 options=["None"] + real_df.columns.tolist()
+            )
+
+            run_name = st.text_input(
+                "Optional run name",
+                value=None
             )
             
             if target_col == "None":
@@ -659,11 +666,19 @@ with tab1:
                     st.write(synthetic_df.head())
 
                     st.subheader("Comparing real dataset to synthetic")
-                    compare_datasets(
+
+                    results = compare_datasets(
                         real_df,
                         synthetic_df,
                         target_col=target_col
                     )
+
+                    save_comparison_results(
+                        results,
+                        output_dir="results",
+                        run_name=run_name
+                    )
+
                 except Exception as e:
                     st.error(
                         f"Generation failed: {str(e)}"
