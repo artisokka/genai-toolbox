@@ -638,10 +638,18 @@ with tab1:
                     os.makedirs(output_dir, exist_ok=True)
 
                     timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M")
+                    run_name = f"{timestamp}_{run_name}"
+
+                    metadata_dir = os.path.join(
+                        output_dir,
+                        f"{run_name}"
+                    )
+
+                    os.makedirs(metadata_dir, exist_ok=True)
 
                     output_path = os.path.join(
-                        output_dir,
-                        f"SYNTH_{timestamp}.csv"
+                        metadata_dir,
+                        f"{run_name}.csv"
                     )
 
                     synthetic_df.to_csv(
@@ -675,8 +683,8 @@ with tab1:
 
                     save_comparison_results(
                         results,
-                        output_dir="results",
-                        run_name=run_name
+                        output_dir=metadata_dir,
+                        run_name=run_name,
                     )
 
                 except Exception as e:

@@ -1,8 +1,12 @@
 
 import pandas as pd
 import numpy as np
+
 from pathlib import Path
 from copulas.multivariate import GaussianMultivariate
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import cross_val_predict
+from sklearn.metrics import r2_score
 
 
 def compare_datasets(real_df, synthetic_df, target_col=None, output_dir=None, run_name=None):
@@ -306,13 +310,13 @@ def compare_datasets(real_df, synthetic_df, target_col=None, output_dir=None, ru
 def save_comparison_results(
     results,
     output_dir,
-    run_name
+    run_name,
 ):
     """
     Save compare_datasets() results
     to CSV and Excel.
     """
-
+    
     save_dir = Path(output_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -385,6 +389,69 @@ def save_comparison_results(
         f"Results saved to {excel_file}"
     )
 
+def detect_derived_numeric_columns(
+    df: pd.DataFrame,
+    r2_threshold: float = 0.999,
+):
+    """
+    Detect numeric columns that can be almost perfectly
+    reconstructed from the remaining numeric columns.
+
+    Returns
+    -------
+    derived_columns : list[dict]
+    """
+
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+
+    derived_columns = []
+
+    if len(numeric_cols) < 4:
+        return derived_columns
+
+    for target_col in numeric_cols:
+
+        predictor_cols = [
+            c for c in numeric_cols
+            if c != target_col
+        ]
+
+        if len(predictor_cols) < 3:
+            continue
+
+        X = df[predictor_cols]
+        y = df[target_col]
+
+        model = RandomForestRegressor(
+            n_estimators=100,
+            random_state=42,
+            n_jobs=-1
+        )
+
+        try:
+
+            preds = cross_val_predict(
+                model,
+                X,
+                y,
+                cv=5,
+                n_jobs=-1
+            )
+
+            r2 = r2_score(y, preds)
+
+            if r2 >= r2_threshold:
+
+                derived_columns.append({
+                    "column": target_col,
+                    "r2": round(r2, 5)
+                })
+
+        except Exception:
+            pass
+
+    return derived_columns
+
 def preprocess_real_dataset(df: pd.DataFrame):
     """
     Clean a real-world clinical dataset before synthetic generation.
@@ -431,7 +498,10 @@ def preprocess_real_dataset(df: pd.DataFrame):
         # Drop almost-unique identifier columns
         unique_ratio = df[col].nunique(dropna=True) / max(len(df), 1)
 
-        if unique_ratio > 0.95:
+        if (
+            unique_ratio > 0.95
+            and not pd.api.types.is_numeric_dtype(df[col])
+        ):
             cols_to_drop.append(col)
 
     if cols_to_drop:
@@ -529,7 +599,18 @@ def preprocess_real_dataset(df: pd.DataFrame):
     report["dropped_columns"].extend(constant_cols)
 
     # --------------------------------------------------
-    # 6. Remove columns that are entirely missing
+    # 6. Detect derived/redundant columns
+    # --------------------------------------------------
+
+    derived_columns = detect_derived_numeric_columns(df)
+
+    print("\nPotential derived columns:")
+    print(derived_columns)
+
+
+
+    # --------------------------------------------------
+    # 7. Remove columns that are entirely missing
     # --------------------------------------------------
 
     empty_cols = df.columns[df.isna().all()].tolist()
