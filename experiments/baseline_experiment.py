@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 # CONFIG
 # ==================================================
 
-DATA_PATH = "aneurysm_dataset.xlsx"
+DATA_PATH = "aneurysm_dataset.csv"
 
 COHORT_COLUMN = "Cohort_number"
 
@@ -130,7 +130,20 @@ def prepare_ml_data(df, target_column):
 # LOAD DATA
 # ==================================================
 
-df = pd.read_excel(DATA_PATH)
+# ==================================================
+# LOAD DATA
+# ==================================================
+
+if DATA_PATH.lower().endswith(".csv"):
+    df = pd.read_csv(DATA_PATH)
+
+elif DATA_PATH.lower().endswith((".xlsx", ".xls")):
+    df = pd.read_excel(DATA_PATH)
+
+else:
+    raise ValueError(
+        f"Unsupported file type: {DATA_PATH}"
+    )
 
 df = clean_column_names(df)
 
