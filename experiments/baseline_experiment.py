@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 # CONFIG
 # ==================================================
 
-DATA_PATH = "aneurysm_dataset.csv"
+DATA_PATH = "patients.csv"
 
 COHORT_COLUMN = "Cohort_number"
 
