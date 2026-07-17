@@ -5,10 +5,8 @@ from pathlib import Path
 
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
-
 from sklearn.ensemble import RandomForestClassifier
 
 from sklearn.metrics import (
@@ -27,8 +25,8 @@ DATA_PATH = "patients.csv"
 
 COHORT_COLUMN = "Cohort_number"
 
-TRAIN_TARGET = "Stable/Unstable"
-TEST_TARGET = "Rupture"
+TRAIN_TARGET = "StableUnstable0stable1unstablei.e.growthorrupture"
+TEST_TARGET = "Rupture1yes0no"
 
 RANDOM_STATE = 42
 
@@ -53,7 +51,7 @@ def prepare_ml_data(df, target_column):
     df = df.copy()
 
     id_columns = [
-        "Patientidentifying number",
+        "Patientidentifyingnumber",
         "Aneurysmidentifyingnumber",
     ]
 
@@ -67,10 +65,15 @@ def prepare_ml_data(df, target_column):
         errors="ignore"
     )
 
+    columns_to_drop = (
+        id_columns +
+        [TRAIN_TARGET, TEST_TARGET]
+    )
+
     y = df[target_column]
 
     X = df.drop(
-        columns=[target_column],
+        columns=columns_to_drop,
         errors="ignore"
     )
 
@@ -130,9 +133,6 @@ def prepare_ml_data(df, target_column):
 # LOAD DATA
 # ==================================================
 
-# ==================================================
-# LOAD DATA
-# ==================================================
 
 if DATA_PATH.lower().endswith(".csv"):
     df = pd.read_csv(DATA_PATH)
@@ -144,6 +144,8 @@ else:
     raise ValueError(
         f"Unsupported file type: {DATA_PATH}"
     )
+
+print(df.columns.tolist())
 
 df = clean_column_names(df)
 
@@ -168,6 +170,12 @@ print(cohort1.shape)
 print("\nCohort 2")
 print(cohort2.shape)
 
+print("\nStable/Unstable distribution")
+print(cohort1[TRAIN_TARGET].value_counts(dropna=False))
+
+print("\nRupture distribution")
+print(cohort2[TEST_TARGET].value_counts(dropna=False))
+
 
 # ==================================================
 # TRAIN DATA
@@ -178,30 +186,22 @@ X_train, y_train, preprocessor = prepare_ml_data(
     TRAIN_TARGET
 )
 
-X_test = cohort2.copy()
+print(X_train.columns.tolist())
 
-# remove train target if present
-X_test = X_test.drop(
-    columns=[TRAIN_TARGET],
-    errors="ignore"
-)
-
-# remove evaluation target
-if TEST_TARGET in X_test.columns:
-    X_test = X_test.drop(
-        columns=[TEST_TARGET]
-    )
-
-# same ID cleanup
-X_test = X_test.drop(
+X_test = cohort2.drop(
     columns=[
-        "Patientidentifying number",
-        "Aneurysmidentifyingnumber"
+        TRAIN_TARGET,
+        TEST_TARGET,
+        "Patientidentifyingnumber",
+        "Aneurysmidentifyingnumber",
     ],
     errors="ignore"
 )
 
-y_test = cohort2[TEST_TARGET]
+y_test = pd.to_numeric(
+    cohort2[TEST_TARGET],
+    errors="coerce"
+).astype(int)
 
 
 # ==================================================
@@ -304,17 +304,32 @@ print(
 # FEATURE IMPORTANCE
 # ==================================================
 
-feature_names = (
-    model
-    .named_steps["preprocessor"]
-    .get_feature_names_out()
+preprocessor = model.named_steps["preprocessor"]
+numeric_features = preprocessor.transformers_[0][2]
+cat_transformers = preprocessor.transformers_[1][1]
+
+categorical_features = (
+    cat_transformer.named_steps["onehot"]
+    .get_feature_names_out(
+        preprocessor.transformers_[1][2]
+    )
 )
+
+feature_names = np.concatenate([
+    numeric_features,
+    categorical_features
+])
 
 importances = (
     model
     .named_steps["classifier"]
     .feature_importances_
 )
+
+# Sanity check
+
+print("\nFeatures: ", len(feature_names))
+print("\nImportances: ", len(importances))
 
 importance_df = pd.DataFrame({
     "feature": feature_names,
@@ -331,6 +346,8 @@ print("\nTop 20 Features")
 print(
     importance_df.head(20)
 )
+
+#Save results
 
 importance_df.to_csv(
     "feature_importance.csv",
