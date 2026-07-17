@@ -214,6 +214,18 @@ with tab1:
                         run_name=run_name,
                     )
 
+                    from csv_input.csv_synthetic_generator import (
+                        save_comparison_plots,
+                    )
+
+                    plot_dir = save_comparison_plots(
+                        real_df,
+                        synthetic_df,
+                        metadata_dir,
+                    )
+
+                    st.success(f"Plots saved to: {plot_dir}")
+
                 except Exception as e:
                     st.error(
                         f"Generation failed: {str(e)}"
