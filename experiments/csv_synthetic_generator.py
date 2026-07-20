@@ -8,6 +8,8 @@ from copulas.multivariate import GaussianMultivariate
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import cross_val_predict
 from sklearn.metrics import r2_score
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 
 def compare_datasets(real_df, synthetic_df, target_col=None, output_dir=None, run_name=None):
@@ -306,10 +308,11 @@ def compare_datasets(real_df, synthetic_df, target_col=None, output_dir=None, ru
         "avg_corr_error": avg_corr_error
     }
 
+
 def save_comparison_plots(
     real_df,
-    synthetic_df,
     output_dir,
+    synthetic_datasets
 ):
     """
     Save descriptive comparison plots between
@@ -319,11 +322,16 @@ def save_comparison_plots(
     plot_dir = Path(output_dir) / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
 
+    # Numeric cols
+
     numeric_cols = real_df.select_dtypes(
         include="number"
-    ).columns.intersection(
-        synthetic_df.columns
-    )
+    ).columns
+
+    for df in synthetic_datasets.values():
+        numeric_cols = numeric_cols.intersection(
+            df.columns
+        )
 
     # -------------------------------------
     # Numeric distributions
@@ -337,17 +345,22 @@ def save_comparison_plots(
             real_df[col].dropna(),
             bins=30,
             density=True,
-            alpha=0.5,
+            alpha=0.4,
             label="Real"
         )
 
-        plt.hist(
-            synthetic_df[col].dropna(),
-            bins=30,
-            density=True,
-            alpha=0.5,
-            label="Synthetic"
-        )
+        for label, df in synthetic_datasets.items():
+
+            if col not in df.columns:
+                continue
+
+            plt.hist(
+                df[col].dropna(),
+                bins=30,
+                density=True,
+                alpha=0.4,
+                label=label
+            )
 
         plt.title(f"Distribution Comparison: {col}")
         plt.xlabel(col)
@@ -368,46 +381,78 @@ def save_comparison_plots(
     if len(numeric_cols) > 1:
 
         corr_real = real_df[numeric_cols].corr()
-        corr_synth = synthetic_df[numeric_cols].corr()
+        for label, df in synthetic_datasets.items():
 
-        diff = (corr_real - corr_synth).abs()
+            corr_syn = df[numeric_cols].corr()
 
-        fig, axes = plt.subplots(
-            1, 3,
-            figsize=(18, 6)
-        )
+            diff = (corr_real - corr_syn).abs()
 
-        axes[0].imshow(corr_real, cmap="coolwarm", aspect="auto")
-        axes[0].set_title("Real Correlations")
+            fig, axes = plt.subplots(
+                1,
+                3,
+                figsize=(18, 6)
+            )
 
-        axes[1].imshow(corr_synth, cmap="coolwarm", aspect="auto")
-        axes[1].set_title("Synthetic Correlations")
+            axes[0].imshow(
+                corr_real,
+                cmap="coolwarm",
+                aspect="auto"
+            )
+            axes[0].set_title("Real")
 
-        axes[2].imshow(diff, cmap="Reds", aspect="auto")
-        axes[2].set_title("Absolute Difference")
+            axes[1].imshow(
+                corr_syn,
+                cmap="coolwarm",
+                aspect="auto"
+            )
+            axes[1].set_title(label)
 
-        for ax in axes:
-            ax.set_xticks(range(len(corr_real.columns)))
-            ax.set_yticks(range(len(corr_real.columns)))
-            ax.set_xticklabels(corr_real.columns, rotation=90)
-            ax.set_yticklabels(corr_real.columns)
+            axes[2].imshow(
+                diff,
+                cmap="Reds",
+                aspect="auto"
+            )
+            axes[2].set_title("Absolute Difference")
 
-        plt.tight_layout()
-        plt.savefig(
-            plot_dir / "correlation_comparison.png",
-            dpi=300
-        )
-        plt.close()
+            for ax in axes:
+                ax.set_xticks(range(len(corr_real.columns)))
+                ax.set_yticks(range(len(corr_real.columns)))
+
+                ax.set_xticklabels(
+                    corr_real.columns,
+                    rotation=90
+                )
+
+                ax.set_yticklabels(
+                    corr_real.columns
+                )
+
+            plt.tight_layout()
+
+            plt.savefig(
+                plot_dir /
+                f"correlation_{label}.png",
+                dpi=300
+            )
+
+            plt.close()
 
     # -------------------------------------
     # Categorical variables
     # -------------------------------------
 
-    categorical_cols = [
-        c for c in real_df.columns
-        if c not in numeric_cols
-        and c in synthetic_df.columns
-    ]
+    categorical_cols = []
+
+    for col in real_df.columns:
+
+        if col in numeric_cols:
+            continue
+
+        if all(
+            col in df.columns
+            for df in synthetic_datasets.values()
+        ):
+            categorical_cols.append(col)
 
     for col in categorical_cols:
 
@@ -416,20 +461,22 @@ def save_comparison_plots(
             .value_counts(normalize=True)
         )
 
-        synth_freq = (
-            synthetic_df[col]
-            .value_counts(normalize=True)
-        )
+        freq_tables = [
+            real_freq.rename("Real")
+        ]
+
+        for label, df in synthetic_datasets.items():
+
+            freq_tables.append(
+                df[col]
+                .value_counts(normalize=True)
+                .rename(label)
+            )
 
         comp = pd.concat(
-            [real_freq, synth_freq],
+            freq_tables,
             axis=1
         ).fillna(0)
-
-        comp.columns = [
-            "Real",
-            "Synthetic"
-        ]
 
         comp.plot(
             kind="bar",
@@ -448,63 +495,93 @@ def save_comparison_plots(
 
         plt.close()
 
-        numeric_cols = real_df.select_dtypes(include="number").columns
+    # PCA
 
-        X_real = real_df[numeric_cols].fillna(0)
-        X_syn = synthetic_df[numeric_cols].fillna(0)
+    X_real = real_df[numeric_cols].fillna(0)
 
-        combined = pd.concat([X_real, X_syn])
+    frames = [X_real]
+    sizes = [len(X_real)]
+    labels = ["Real"]
 
-        scaled = StandardScaler().fit_transform(combined)
+    for label, df in synthetic_datasets.items():
 
-        pca = PCA(n_components=2)
-        coords = pca.fit_transform(scaled)
+        X = df[numeric_cols].fillna(0)
 
-        n_real = len(X_real)
+        frames.append(X)
+        sizes.append(len(X))
+        labels.append(label)
 
-        plt.figure(figsize=(7, 6))
+    combined = pd.concat(
+        frames,
+        ignore_index=True
+    )
+
+    scaled = StandardScaler().fit_transform(
+        combined
+    )
+
+    pca = PCA(n_components=2)
+
+    coords = pca.fit_transform(
+        scaled
+    )
+
+    plt.figure(figsize=(7, 6))
+
+    start = 0
+
+    for size, label in zip(sizes, labels):
+
+        end = start + size
 
         plt.scatter(
-            coords[:n_real, 0],
-            coords[:n_real, 1],
+            coords[start:end, 0],
+            coords[start:end, 1],
             alpha=0.4,
-            label="Real"
+            label=label
         )
 
-        plt.scatter(
-            coords[n_real:, 0],
-            coords[n_real:, 1],
-            alpha=0.4,
-            label="Synthetic"
+        start = end
+
+    plt.legend()
+
+    plt.title("PCA Comparison")
+
+    plt.tight_layout()
+
+    plt.savefig(
+        plot_dir / "pca_comparison.png",
+        dpi=300
+    )
+
+    plt.close()
+
+    # Means
+
+    means = pd.DataFrame({
+        "Real": real_df[numeric_cols].mean()
+    })
+
+    for label, df in synthetic_datasets.items():
+
+        means[label] = (
+            df[numeric_cols]
+            .mean()
         )
 
-        plt.legend()
-        plt.title("PCA: Real vs Synthetic")
-        plt.tight_layout()
+    means.plot(
+        kind="bar",
+        figsize=(12, 5)
+    )
 
-        plt.savefig(
-            plot_dir / "pca_real_vs_synthetic.png",
-            dpi=300
-        )
-        plt.close()
+    plt.title("Mean Comparison")
+    plt.tight_layout()
 
-        # Means
-
-        means = pd.DataFrame({
-            "Real": real_df[numeric_cols].mean(),
-            "Synthetic": synthetic_df[numeric_cols].mean()
-        })
-
-        means.plot(kind="bar", figsize=(12,5))
-
-        plt.title("Mean Comparison")
-        plt.tight_layout()
-
-        plt.savefig(
-            plot_dir / "mean_comparison.png",
-            dpi=300
-        )
-        plt.close()
+    plt.savefig(
+        plot_dir / "mean_comparison.png",
+        dpi=300
+    )
+    plt.close()
 
     return plot_dir
 
