@@ -14,6 +14,9 @@ from sklearn.metrics import (
     roc_curve,
 )
 
+import matplotlib
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 
 
@@ -21,15 +24,12 @@ import matplotlib.pyplot as plt
 # CONFIG
 # ==================================================
 
-DATA_PATH = "patients.csv"
+DATA_PATH = "data/patients.csv"
 
 COHORT_COLUMN = "Cohort_number"
 
-#TRAIN_TARGET = "StableUnstable0stable1unstablei.e.growthorrupture"
-#TEST_TARGET = "Rupture1yes0no"
-
-TRAIN_TARGET = ""
-TEST_TARGET = ""
+TRAIN_TARGET = "StableUnstable0stable1unstablei.e.growthorrupture"
+TEST_TARGET = "Rupture1yes0no"
 
 RANDOM_STATE = 42
 
