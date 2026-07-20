@@ -585,7 +585,7 @@ def save_comparison_plots(
 
     return plot_dir
 
-# Save results into csv -> excel
+# Save results into csv
 
 def save_comparison_results(
     results,
@@ -594,7 +594,7 @@ def save_comparison_results(
 ):
     """
     Save compare_datasets() results
-    to CSV and Excel.
+    to CSV.
     """
     
     save_dir = Path(output_dir)
@@ -623,50 +623,6 @@ def save_comparison_results(
     results["correlations"].to_csv(
         save_dir / f"{run_name}_correlations.csv",
         index=False
-    )
-
-    excel_file = (
-        save_dir /
-        f"{run_name}_evaluation.xlsx"
-    )
-
-    with pd.ExcelWriter(
-        excel_file,
-        engine="openpyxl"
-    ) as writer:
-
-        results["overview"].to_excel(
-            writer,
-            sheet_name="Overview",
-            index=False
-        )
-
-        results["numeric"].to_excel(
-            writer,
-            sheet_name="Numeric",
-            index=False
-        )
-
-        results["binary"].to_excel(
-            writer,
-            sheet_name="Binary",
-            index=False
-        )
-
-        results["categorical"].to_excel(
-            writer,
-            sheet_name="Categorical",
-            index=False
-        )
-
-        results["correlations"].to_excel(
-            writer,
-            sheet_name="Correlations",
-            index=False
-        )
-
-    print(
-        f"Results saved to {excel_file}"
     )
 
 def detect_derived_numeric_columns(

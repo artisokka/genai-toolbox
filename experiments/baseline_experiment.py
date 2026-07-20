@@ -28,8 +28,12 @@ DATA_PATH = "data/patients.csv"
 
 COHORT_COLUMN = "Cohort_number"
 
-TRAIN_TARGET = "StableUnstable0stable1unstablei.e.growthorrupture"
-TEST_TARGET = "Rupture1yes0no"
+#UNCOMMENT
+#TRAIN_TARGET = "StableUnstable0stable1unstablei.e.growthorrupture"
+#TEST_TARGET = "Rupture1yes0no"
+
+TRAIN_TARGET = "day_28_flg"
+TEST_TARGET = "day_28_flg"
 
 RANDOM_STATE = 42
 
@@ -53,9 +57,18 @@ def prepare_ml_data(df, target_column):
 
     df = df.copy()
 
+    # UNCOMMENT
+    #id_columns = [
+    #    "Patientidentifyingnumber",
+    #    "Aneurysmidentifyingnumber",
+    #]
+
+    # COMMENT
     id_columns = [
-        "Patientidentifyingnumber",
-        "Aneurysmidentifyingnumber",
+        "hosp_exp_flg",
+        "icu_exp_flg",
+        "mort_day_censored",
+        "censor_flg"
     ]
 
     existing_ids = [
@@ -139,6 +152,13 @@ def prepare_ml_data(df, target_column):
 
 if DATA_PATH.lower().endswith(".csv"):
     df = pd.read_csv(DATA_PATH)
+    # JUST FOR LOCAL TESTING PURPOSES; DELETE BEFORE T3
+    df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+    half = len(df) // 2
+
+    df[COHORT_COLUMN] = 2
+    df.loc[:half-1, COHORT_COLUMN] = 1
+    # END OF DELETION
 
 elif DATA_PATH.lower().endswith((".xlsx", ".xls")):
     df = pd.read_excel(DATA_PATH)
