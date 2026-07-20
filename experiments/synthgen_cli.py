@@ -13,6 +13,10 @@ from csv_synthetic_generator import (
     preprocess_real_dataset,
 )
 
+from csv_input.csv_synthetic_generator import (
+                        save_comparison_plots,
+                    )
+
 
 def main():
 

@@ -25,8 +25,11 @@ DATA_PATH = "patients.csv"
 
 COHORT_COLUMN = "Cohort_number"
 
-TRAIN_TARGET = "StableUnstable0stable1unstablei.e.growthorrupture"
-TEST_TARGET = "Rupture1yes0no"
+#TRAIN_TARGET = "StableUnstable0stable1unstablei.e.growthorrupture"
+#TEST_TARGET = "Rupture1yes0no"
+
+TRAIN_TARGET = ""
+TEST_TARGET = ""
 
 RANDOM_STATE = 42
 
@@ -306,7 +309,7 @@ print(
 
 preprocessor = model.named_steps["preprocessor"]
 numeric_features = preprocessor.transformers_[0][2]
-cat_transformers = preprocessor.transformers_[1][1]
+cat_transformer = preprocessor.transformers_[1][1]
 
 categorical_features = (
     cat_transformer.named_steps["onehot"]
